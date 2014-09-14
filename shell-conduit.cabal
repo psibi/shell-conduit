@@ -1,0 +1,34 @@
+name:                shell-conduit
+version:             0.0
+synopsis:            Write shell scripts with Conduit
+description:         Write shell scripts with Conduit
+license:             BSD3
+license-file:        LICENSE
+author:              Chris Done
+maintainer:          chrisdone@gmail.com
+copyright:           2014 Chris Done
+category:            Conduit, Scripting
+build-type:          Simple
+cabal-version:       >=1.8
+
+library
+  hs-source-dirs:    src/
+  ghc-options:       -Wall -O2
+  exposed-modules:   Data.Conduit.Shell
+                     Data.Conduit.Shell.PATH
+                     Data.Conduit.Shell.TH
+                     Data.Conduit.Shell.Process
+                     Data.Conduit.Shell.Types
+                     Data.Conduit.Shell.Combinators
+  build-depends:     base >= 4 && <5,
+                     conduit,
+                     conduit-extra,
+                     resourcet,
+                     process,
+                     bytestring,
+                     control-monad-loop,
+                     monads-tf,
+                     filepath,
+                     directory,
+                     template-haskell,
+                     split
