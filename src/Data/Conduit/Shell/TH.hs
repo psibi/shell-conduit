@@ -7,9 +7,11 @@ module Data.Conduit.Shell.TH
   (generateBinaries)
   where
 
+import Control.Arrow
 import Control.Monad
 import Data.Char
 import Data.Conduit.Shell.Process hiding (proc)
+import Data.Function
 import Data.List
 import Data.List.Split
 import Language.Haskell.TH
@@ -23,9 +25,9 @@ generateBinaries :: Q [Dec]
 generateBinaries =
   do bins <- runIO getAllBinaries
      return
-       (map (\bin ->
+       (map (\(name,bin) ->
                let args = mkName "args"
-               in FunD (mkName bin)
+               in FunD (mkName name)
                        [Clause [VarP args]
                                (NormalB
                                   (AppE (VarE 'conduitProcess)
@@ -33,7 +35,7 @@ generateBinaries =
                                                      (LitE (StringL bin)))
                                                (VarE args))))
                                []] )
-            (nub (filter (not . null) (map normalize bins))))
+            (nubBy (on (==) fst) (filter (not . null . fst) (map (normalize &&& id) bins))))
   where normalize = remap . uncapitalize . go
           where go (c:cs)
                   | c == '-' || c  == '_' =
