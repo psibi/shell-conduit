@@ -38,20 +38,21 @@ main =
           alertDone [])
 ```
 
-Some imports:
+Standard Haskell imports:
 
 ``` haskell
+λ> import Data.Bifunctor
 λ> import Data.Char
 λ> import Data.Conduit
 λ> import Data.Conduit.Shell
-λ> import qualified Data.Conduit.Shell.Combinators as SH
 λ> import qualified Data.ByteString.Char8 as S8
+λ> import qualified Data.Conduit.List as CL
 ```
 
 Piping:
 
 ``` haskell
-λ> run (ls [] $= grep ["Key"] $= shell "cat" $= SH.map (S8.map toUpper))
+λ> run (ls [] $= grep ["Key"] $= shell "cat" $= CL.map (second (S8.map toUpper)))
 KEYBOARD.HI
 KEYBOARD.HS
 KEYBOARD.O
