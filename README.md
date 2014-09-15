@@ -3,7 +3,7 @@ shell-conduit
 
 Write shell scripts with Conduit. Still in the experimental phase.
 
-### What is this?
+### The idea
 
 All executable names in the `PATH` at compile-time are brought into
 scope as runnable process conduits e.g. `ls` or `grep`.
@@ -16,7 +16,9 @@ type Chunk = Either ByteString ByteString
 
 `Left` is stderr, `Right` is stdin/stdout.
 
-### File example
+### Examples
+
+A script:
 
 ``` haskell
 -- | Download and initialize repo.
@@ -35,8 +37,6 @@ main =
           shell "./scripts/build-all"
           alertDone [])
 ```
-
-### REPL example
 
 Some imports:
 
