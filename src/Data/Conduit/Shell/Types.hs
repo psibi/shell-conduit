@@ -6,9 +6,7 @@ import Data.ByteString (ByteString)
 
 -- | A chunk, either stdout/stdin or stderr. Used for both input and
 -- output.
-data Chunk
-  = StdErr !ByteString
-  | StdInOut !ByteString
+type Chunk = Either ByteString ByteString
 
 -- | Either stdout or stderr.
 data ChunkType

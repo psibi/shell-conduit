@@ -8,12 +8,13 @@ Write shell scripts with Conduit. Still in the experimental phase.
 All executable names in the `PATH` at compile-time are brought into
 scope as runnable process conduits e.g. `ls` or `grep`.
 
-Stdin/out and stderr are handled as distinct constructors of a `Chunk`
-type.
+Stdin/out and stderr are handled as an Either type.
 
 ``` haskell
-data Chunk = StdErr !ByteString | StdInOut !ByteString
+type Chunk = Either ByteString ByteString
 ```
+
+`Left` is stderr, `Right` is stdin/stdout.
 
 ### File example
 
