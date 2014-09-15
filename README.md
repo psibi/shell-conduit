@@ -70,3 +70,14 @@ hi
 sap
 hi
 ```
+
+Streaming:
+
+``` haskell
+λ> run (do tail' ["/tmp/example.txt","-f"] $= grep ["--line-buffered","Hello"])
+Hello, world!
+Oh, hello!
+```
+
+(Remember that `grep` needs `--line-buffered` if it is to output things
+line-by-line).
