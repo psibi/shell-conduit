@@ -19,15 +19,18 @@ library
                      Data.Conduit.Shell.TH
                      Data.Conduit.Shell.Process
                      Data.Conduit.Shell.Types
-  build-depends:     base >= 4 && <5,
-                     conduit,
-                     conduit-extra,
-                     resourcet,
-                     process,
-                     bytestring,
-                     control-monad-loop,
-                     monads-tf,
-                     filepath,
-                     directory,
-                     template-haskell,
-                     split
+  build-depends:     base >= 4 && <5
+                   , bytestring
+                   , conduit
+                   , conduit-extra
+                   , control-monad-loop
+                   , directory
+                   , filepath
+                   , monad-control
+                   , monads-tf
+                   , process
+                   , resourcet
+                   , split
+                   , template-haskell
+                   , transformers
+                   , transformers-base

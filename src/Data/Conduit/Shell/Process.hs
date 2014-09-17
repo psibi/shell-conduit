@@ -4,28 +4,20 @@
 
 module Data.Conduit.Shell.Process where
 
-import           Control.Applicative
-import           Control.Concurrent (forkIO)
-import           Control.Concurrent.MVar
+import           Data.Conduit.Shell.Types
+
 import qualified Control.Exception as E
 import           Control.Monad
 import           Control.Monad.Trans
 import           Control.Monad.Trans.Loop
 import           Control.Monad.Trans.Resource
-import           Data.ByteString (ByteString)
 import qualified Data.ByteString as S
 import           Data.Conduit
-import qualified Data.Conduit.Binary as CB
 import           Data.Conduit.List (sourceList)
-import qualified Data.Conduit.List as CL
 import           Data.Conduit.Process
-import           Data.Conduit.Shell.Types
-import           Data.Either
 import           Data.Maybe
 import           System.Exit (ExitCode(..))
 import           System.IO
-import qualified System.Process
-import           System.Process hiding (shell)
 
 -- | Size of buffer used to read from process.
 bufSize :: Int
@@ -33,48 +25,12 @@ bufSize = 64 * 1024
 
 -- | Run a shell scripting conduit.
 run :: (MonadIO m,MonadBaseControl IO m)
-    => Conduit Chunk (ResourceT m) Chunk -> m ()
+    => Conduit Chunk (ShellT m) Chunk -> m ()
 run p =
   runResourceT
-    (sourceList [] $=
-     p $$
-     writeChunks)
-
--- | Do something with just the rights.
-withRights :: (Monad m)
-           => Conduit ByteString m ByteString -> Conduit Chunk m Chunk
-withRights f =
-  getZipConduit
-    (ZipConduit f' *>
-     ZipConduit g')
-  where f' =
-          CL.mapMaybe (either (const Nothing) Just) =$=
-          f =$=
-          CL.map Right
-        g' = CL.filter isLeft
-
--- | Redirect the given chunk type to the other type.
-redirect :: Monad m
-         => ChunkType -> Conduit Chunk m Chunk
-redirect ty =
-  CL.map (\c ->
-            case c of
-              Left x ->
-                case ty of
-                  Stderr -> Right x
-                  Stdout -> c
-              Right x ->
-                case ty of
-                  Stderr -> c
-                  Stdout -> Left x)
-
--- | Run a shell command.
-shell :: (MonadResource m) => String -> Conduit Chunk m Chunk
-shell x = conduitProcess (System.Process.shell x)
-
--- | Run a shell command.
-proc :: (MonadResource m) => String -> [String] -> Conduit Chunk m Chunk
-proc x args = conduitProcess (System.Process.proc x args)
+    (runShellT (sourceList [] $=
+                p $$
+                writeChunks))
 
 -- | Write chunks to stdout and stderr.
 writeChunks :: (MonadIO m)
@@ -131,7 +87,9 @@ conduitProcess cp = bracketP createp closep $ \(Just cin, Just cout, _, ph) -> d
     lift $ yield (Right out)
 
   ec <- liftIO $ maybe (waitForProcess' ph) return end
-  lift $ when (ec /= ExitSuccess) $ monadThrow ec
+  case ec of
+    ExitSuccess -> return ()
+    ExitFailure i -> lift (monadThrow (ShellExitFailure i))
 
   where
     createp = createProcess cp
