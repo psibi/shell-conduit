@@ -1,0 +1,21 @@
+* TODO Add explicit echo'ing of commands being run
+A la set +x in Bash.
+* BLOCKED Error handling. How to catch exceptions in Conduit?
+
+E.g. the following does not work:
+
+#+BEGIN_SRC haskell
+fix (\loop ->
+       do e <- tryC (CL.sourceList [] $= ps ["-C","ircbrowse"] $$ discardChunks)
+          case e of
+            Left ExitFailure{} -> loop
+            Right{} -> void (echo ["Waiting..."])
+            _ -> return ())
+#+END_SRC
+
+It yields:
+
+#+BEGIN_SRC haskell
+λ> main
+*** Exception: ExitFailure 1
+#+END_SRC
