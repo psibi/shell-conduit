@@ -1,7 +1,9 @@
-shell-conduit
+shell-conduit [![Hackage](https://img.shields.io/hackage/v/shell-conduit.svg?style=flat)](https://hackage.haskell.org/package/shell-conduit)
 =====
 
 Write shell scripts with Conduit. Still in the experimental phase.
+
+[Haddock API documentation](http://chrisdone.github.io/shell-conduit/).
 
 ### Examples
 
