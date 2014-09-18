@@ -147,3 +147,26 @@ ambiguous type errors.
 But this isn't necessary if you don't need to use `Text` yet. Strings
 literals will be interpreted as `String`. Though you can pass a value
 of type `Text` or any instance of `CmdArg` without needing conversions.
+
+### Other modules
+
+You might want to import the regular Conduit modules qualified, too:
+
+``` haskell
+import qualified Data.Conduit.List as CL
+```
+
+Which contains handy functions for working on streams in a
+list-like way. See the rest of the handy modules for Conduit in
+[conduit-extra](http://hackage.haskell.org/package/conduit-extra).
+
+Also of interest is
+[csv-conduit](http://hackage.haskell.org/package/csv-conduit),
+[html-conduit](http://hackage.haskell.org/package/html-conduit), and
+[http-conduit](http://hackage.haskell.org/package/http-conduit).
+
+Finally, see the Conduit category on Hackage for other useful
+libraries: <http://hackage.haskell.org/packages/#cat:Conduit>
+
+All of these general purpose Conduits can be used in shell
+scripting.
