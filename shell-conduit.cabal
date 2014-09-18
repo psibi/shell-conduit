@@ -1,7 +1,7 @@
 name:                shell-conduit
 version:             0.0
 synopsis:            Write shell scripts with Conduit
-description:         Write shell scripts with Conduit
+description:         Write shell scripts with Conduit. See "Data.Conduit.Shell" for documentation.
 license:             BSD3
 license-file:        LICENSE
 author:              Chris Done

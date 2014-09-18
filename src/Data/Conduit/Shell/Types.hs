@@ -31,17 +31,19 @@ type Chunk = Either ByteString ByteString
 
 -- | Either stdout or stderr.
 data ChunkType
-  = Stderr
-  | Stdout
+  = Stderr -- ^ Stderr.
+  | Stdout -- ^ Stdin or stdout.
   deriving (Eq,Enum,Bounded)
 
 -- | Shell transformer.
 newtype ShellT m a =
   ShellT {runShellT :: ResourceT m a}
   deriving (Applicative,Monad,Functor,MonadThrow,MonadIO,MonadTrans)
+
 deriving instance (MonadResourceBase m) => MonadBase IO (ShellT m)
 deriving instance (MonadResourceBase m) => MonadResource (ShellT m)
 
+-- | Dumb instance.
 instance (MonadThrow m,MonadIO m,MonadBaseControl IO m) => MonadBaseControl IO (ShellT m) where
   newtype StM (ShellT m) a = StMShell{unStMGeoServer ::
                                     StM (ResourceT m) a}
@@ -65,7 +67,7 @@ instance (MonadBaseControl IO (ShellT m),Applicative m,MonadThrow m) => Alternat
 
 -- | An exception resulting from a shell command.
 data ShellException
-  = ShellEmpty
-  | ShellExitFailure !Int
+  = ShellEmpty -- ^ For 'mempty'.
+  | ShellExitFailure !Int -- ^ Process exited with failure.
   deriving (Typeable,Show)
 instance Exception ShellException

@@ -5,7 +5,8 @@
 
 module Data.Conduit.Shell.Variadic
   (ProcessType(..)
-  ,variadicProcess)
+  ,variadicProcess
+  ,CmdArg(..))
   where
 
 import           Control.Monad.Trans.Resource

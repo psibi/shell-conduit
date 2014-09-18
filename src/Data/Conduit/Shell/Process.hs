@@ -2,19 +2,38 @@
 
 -- | Reading from the process.
 
-module Data.Conduit.Shell.Process where
+module Data.Conduit.Shell.Process
+  (-- * Running scripts
+   run
+   -- * Running processes
+  ,Data.Conduit.Shell.Process.shell
+  ,Data.Conduit.Shell.Process.proc
+   -- * I/O chunks
+  ,withRights
+  ,redirect
+  ,quiet
+  ,writeChunks
+  ,discardChunks
+  -- * Low-level internals
+  ,conduitProcess
+  )
+  where
 
 import           Data.Conduit.Shell.Types
 
+import           Control.Applicative
 import qualified Control.Exception as E
 import           Control.Monad
 import           Control.Monad.Trans
 import           Control.Monad.Trans.Loop
 import           Control.Monad.Trans.Resource
+import           Data.ByteString
 import qualified Data.ByteString as S
 import           Data.Conduit
 import           Data.Conduit.List (sourceList)
+import qualified Data.Conduit.List as CL
 import           Data.Conduit.Process
+import           Data.Either
 import           Data.Maybe
 import           System.Exit (ExitCode(..))
 import           System.IO
@@ -31,6 +50,38 @@ proc px args = conduitProcess (System.Process.proc px args)
 -- | Size of buffer used to read from process.
 bufSize :: Int
 bufSize = 64 * 1024
+
+-- | Do something with just the rights.
+withRights :: (Monad m)
+           => Conduit ByteString m ByteString -> Conduit Chunk m Chunk
+withRights f =
+  getZipConduit
+    (ZipConduit f' *>
+     ZipConduit g')
+  where f' =
+          CL.mapMaybe (either (const Nothing) Just) =$=
+          f =$=
+          CL.map Right
+        g' = CL.filter isLeft
+
+-- | Redirect the given chunk type to the other type.
+redirect :: Monad m
+         => ChunkType -> Conduit Chunk m Chunk
+redirect ty =
+  CL.map (\c' ->
+            case c' of
+              Left x' ->
+                case ty of
+                  Stderr -> Right x'
+                  Stdout -> c'
+              Right x' ->
+                case ty of
+                  Stderr -> c'
+                  Stdout -> Left x')
+
+-- | Discard any output from the command: make it quiet.
+quiet :: (Monad m,MonadIO m) => Conduit Chunk m Chunk -> Conduit Chunk m Chunk
+quiet m = m $= discardChunks
 
 -- | Run a shell scripting conduit.
 run :: (MonadIO m,MonadBaseControl IO m)
