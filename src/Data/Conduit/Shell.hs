@@ -2,11 +2,14 @@
 
 module Data.Conduit.Shell
   (run
+  ,ShellT
+  ,Chunk
   ,withRights
   ,redirect
   ,shell
   ,proc
   ,discardChunks
+  ,quiet
   ,module Data.Conduit.Shell.PATH)
   where
 
@@ -38,16 +41,16 @@ withRights f =
 redirect :: Monad m
          => ChunkType -> Conduit Chunk m Chunk
 redirect ty =
-  CL.map (\c ->
-            case c of
-              Left x ->
+  CL.map (\c' ->
+            case c' of
+              Left x' ->
                 case ty of
-                  Stderr -> Right x
-                  Stdout -> c
-              Right x ->
+                  Stderr -> Right x'
+                  Stdout -> c'
+              Right x' ->
                 case ty of
-                  Stderr -> c
-                  Stdout -> Left x)
+                  Stderr -> c'
+                  Stdout -> Left x')
 
 -- | Discard any output from the command: make it quiet.
 quiet :: (Monad m,MonadIO m) => Conduit Chunk m Chunk -> Conduit Chunk m Chunk
