@@ -1,16 +1,21 @@
 -- | Shell scripting with Conduit.
 
 module Data.Conduit.Shell
-  (run
+  (-- * Start
+   run
   ,ShellT
   ,Chunk
-  ,withRights
-  ,redirect
+  -- * Process launching
   ,shell
   ,proc
+  -- * Handling input/output chunks
   ,discardChunks
   ,quiet
-  ,module Data.Conduit.Shell.PATH)
+  ,withRights
+  ,redirect
+  -- * Handy re-exports
+  ,module Data.Conduit.Shell.PATH
+  ,module Data.Conduit)
   where
 
 import           Data.Conduit.Shell.PATH

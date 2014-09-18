@@ -35,3 +35,4 @@ library
                    , template-haskell
                    , transformers
                    , transformers-base
+                   , text

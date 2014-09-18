@@ -26,11 +26,12 @@ variadicProcess name = spr name []
 
 -- | Make the final conduit.
 makeProcessLauncher :: (MonadResource m)
-                    => String -> [String] -> Conduit Chunk m Chunk
-makeProcessLauncher name args = proc name args
+                    => String -> [ST.Text] -> Conduit Chunk m Chunk
+makeProcessLauncher name args = proc name (map ST.unpack args)
 
+-- | Process return type.
 class ProcessType t where
-    spr :: String -> [String] -> t
+    spr :: String -> [ST.Text] -> t
 
 -- | The real type should be:
 --
@@ -43,21 +44,24 @@ instance (MonadResource m, c ~ Chunk, c' ~ Chunk, r ~ ()) => ProcessType (Condui
     spr name args = makeProcessLauncher name (reverse args)
 
 -- | Accept strings as arguments.
-instance (ProcessType r) => ProcessType (String -> r) where
-    spr name args = \a -> spr name (a : args)
+instance (ProcessType r,CmdArg a) => ProcessType (a -> r) where
+    spr name args = \a -> spr name (toTextArg a : args)
 
--- | Accept strict 'ST.Text' as arguments.
-instance (ProcessType r) => ProcessType (ST.Text -> r) where
-    spr name args = \a -> spr name (ST.unpack a : args)
+-- | Command line argument.
+class CmdArg a  where
+  toTextArg :: a -> ST.Text
 
--- | Accept lazy 'LT.Text' as arguments.
-instance (ProcessType r) => ProcessType (LT.Text -> r) where
-    spr name args = \a -> spr name (LT.unpack a : args)
+instance CmdArg ST.Text where
+  toTextArg = id
 
--- | Accept strict 'SB.ByteString' as arguments. Encodes as UTF-8.
-instance (ProcessType r) => ProcessType (SB.ByteString -> r) where
-    spr name args = \a -> spr name (ST.unpack (ST.decodeUtf8 a) : args)
+instance CmdArg LT.Text where
+  toTextArg = LT.toStrict
 
--- | Accept lazy 'LB.ByteString' as arguments. Encodes as UTF-8.
-instance (ProcessType r) => ProcessType (LB.ByteString -> r) where
-    spr name args = \a -> spr name (LT.unpack (LT.decodeUtf8 a) : args)
+instance CmdArg SB.ByteString where
+  toTextArg = ST.decodeUtf8
+
+instance CmdArg LB.ByteString where
+  toTextArg = LT.toStrict . LT.decodeUtf8
+
+instance CmdArg String where
+  toTextArg = ST.pack

@@ -3,46 +3,6 @@ shell-conduit
 
 Write shell scripts with Conduit. Still in the experimental phase.
 
-### The idea
-
-All executable names in the `PATH` at compile-time are brought into
-scope as runnable process conduits e.g. `ls` or `grep`.
-
-Stdin/out and stderr are handled as an Either type.
-
-``` haskell
-type Chunk = Either ByteString ByteString
-```
-
-`Left` is stderr, `Right` is stdin/stdout.
-
-All processes are bound as variadic process calling functions, like this:
-
-``` haskell
-rmdir :: ProcessType r => r
-ls :: ProcessType r => r
-```
-
-But ultimately the types end up being:
-
-``` haskell
-rmdir "foo" :: Conduit Chunk m Chunk
-ls :: Conduit Chunk m Chunk
-ls "." :: Conduit Chunk m Chunk
-```
-
-Etc.
-
-Run all shell scripts with
-
-``` haskell
-run :: (MonadIO m, MonadBaseControl IO m)
-    => Conduit Chunk (ShellT m) Chunk -> m ()
-```
-
-The `ShellT` type has a handy `Alternative` instance and can store
-info like whether to echo all processes run similar to Bash's `set -x`.
-
 ### Examples
 
 ##### Cloning and initializing a repo
@@ -109,10 +69,9 @@ line-by-line).
 Process errors can be ignored by using the Alternative instance.
 
 ``` haskell
-import           Control.Applicative
-import           Control.Monad.Fix
-import           Data.Conduit
-import           Data.Conduit.Shell
+import Control.Applicative
+import Control.Monad.Fix
+import Data.Conduit.Shell
 
 main =
   run (do ls
@@ -134,3 +93,57 @@ main =
   run (do xmodmap ".xmodmap"
           xset "r" "rate" "150" "50")
 ```
+
+### How it works
+
+All executable names in the `PATH` at compile-time are brought into
+scope as runnable process conduits e.g. `ls` or `grep`.
+
+Stdin/out and stderr are handled as an Either type.
+
+``` haskell
+type Chunk = Either ByteString ByteString
+```
+
+`Left` is stderr, `Right` is stdin/stdout.
+
+All processes are bound as variadic process calling functions, like this:
+
+``` haskell
+rmdir :: ProcessType r => r
+ls :: ProcessType r => r
+```
+
+But ultimately the types end up being:
+
+``` haskell
+rmdir "foo" :: Conduit Chunk m Chunk
+ls :: Conduit Chunk m Chunk
+ls "." :: Conduit Chunk m Chunk
+```
+
+Etc.
+
+Run all shell scripts with
+
+``` haskell
+run :: (MonadIO m, MonadBaseControl IO m)
+    => Conduit Chunk (ShellT m) Chunk -> m ()
+```
+
+The `ShellT` type has a handy `Alternative` instance and can store
+info like whether to echo all processes run similar to Bash's `set -x`.
+
+### String types
+
+If using `OverloadedStrings` so that you can use `Text` for arguments,
+then also enable `ExtendedDefaultRules`, otherwise you'll get
+ambiguous type errors.
+
+``` haskell
+{-# LANGUAGE ExtendedDefaultRules #-}
+```
+
+But this isn't necessary if you don't need to use `Text` yet. Strings
+literals will be interpreted as `String`. Though you can pass a value
+of type `Text` or any instance of `CmdArg` without needing conversions.
