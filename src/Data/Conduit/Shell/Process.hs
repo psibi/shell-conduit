@@ -18,6 +18,15 @@ import           Data.Conduit.Process
 import           Data.Maybe
 import           System.Exit (ExitCode(..))
 import           System.IO
+import qualified System.Process
+
+-- | Run a shell command.
+shell :: (MonadResource m) => String -> Conduit Chunk m Chunk
+shell = conduitProcess . System.Process.shell
+
+-- | Run a shell command.
+proc :: (MonadResource m) => String -> [String] -> Conduit Chunk m Chunk
+proc px args = conduitProcess (System.Process.proc px args)
 
 -- | Size of buffer used to read from process.
 bufSize :: Int
