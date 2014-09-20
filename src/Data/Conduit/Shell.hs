@@ -86,11 +86,6 @@
 module Data.Conduit.Shell
   (-- * Running scripts
    run
-   -- * Example executables
-   -- $examples
-  ,Data.Conduit.Shell.ls
-  ,Data.Conduit.Shell.cat
-  ,Data.Conduit.Shell.grep
    -- * Running custom processes
   ,shell
   ,proc
@@ -112,56 +107,10 @@ module Data.Conduit.Shell
 import Data.Conduit
 import Data.Conduit.Filesystem
 import qualified Data.Conduit.Shell.PATH
-import Data.Conduit.Shell.PATH hiding (ls,grep,cat)
+import Data.Conduit.Shell.PATH
 import Data.Conduit.Shell.Process
 import Data.Conduit.Shell.Types
 import Data.Conduit.Shell.Variadic
-
--- $examples
---
--- These are three documented executables provided as examples (chosen
--- because they are bound to exist for all POSIX users),
--- re-exported. To see the complete list, look at the module
--- "Data.Conduit.Shell.PATH". That whole module is re-exported from
--- this module.
---
--- The type in each is @ProcessType r => r@, because they are
--- variadic. You can specify an arbitrary number of arguments:
---
---
--- >>> run ls
--- dist
--- ..
---
--- >>> run (ls ".")
--- foo.txt
--- bar.txt
--- >>> run (ls "/")
--- bin
--- boot
--- cdrom
--- ...
---
--- >>> run (ls "/" "-al")
--- total 180
--- drwxr-xr-x  24 root root  4096 Aug  4  2013 .
--- drwxr-xr-x  24 root root  4096 Aug  4  2013 ..
--- drwxr-xr-x   2 root root  4096 Sep 12 08:35 bin
--- drwxr-xr-x   4 root root  4096 May 28  2013 boot
--- drwxr-xr-x   2 root root  4096 Apr 27  2013 cdrom
--- ...
-
--- | List directory contents.
-ls :: ProcessType r => r
-ls = Data.Conduit.Shell.PATH.ls
-
--- | Print lines matching a pattern.
-grep :: ProcessType r => r
-grep = Data.Conduit.Shell.PATH.grep
-
--- | Concatenate files and print on the standard output.
-cat :: ProcessType r => r
-cat = Data.Conduit.Shell.PATH.cat
 
 -- $exports
 --
