@@ -1,22 +1,23 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
 
 -- | Reading from the process.
 
 module Data.Conduit.Shell.Process
-  (-- * Running scripts
-   run
-   -- * Running processes
-  ,Data.Conduit.Shell.Process.shell
-  ,Data.Conduit.Shell.Process.proc
-   -- * I/O chunks
-  ,withRights
-  ,redirect
-  ,quiet
-  ,writeChunks
-  ,discardChunks
-  -- * Low-level internals
-  ,conduitProcess
-  )
+  -- (-- * Running scripts
+  --  run
+  --  -- * Running processes
+  -- ,Data.Conduit.Shell.Process.shell
+  -- ,Data.Conduit.Shell.Process.proc
+  --  -- * I/O chunks
+  -- ,withRights
+  -- ,redirect
+  -- ,quiet
+  -- ,writeChunks
+  -- ,discardChunks
+  -- -- * Low-level internals
+  -- ,conduitProcess
+  -- )
   where
 
 import           Data.Conduit.Shell.Types
@@ -27,7 +28,7 @@ import           Control.Monad
 import           Control.Monad.Trans
 import           Control.Monad.Trans.Loop
 import           Control.Monad.Trans.Resource
-import           Data.ByteString
+import           Data.ByteString (ByteString)
 import qualified Data.ByteString as S
 import           Data.Conduit
 import           Data.Conduit.List (sourceList)
@@ -35,6 +36,7 @@ import qualified Data.Conduit.List as CL
 import           Data.Conduit.Process
 import           Data.Either
 import           Data.Maybe
+import           Data.Monoid
 import           System.Exit (ExitCode(..))
 import           System.IO
 import qualified System.Process
@@ -108,61 +110,85 @@ discardChunks :: (MonadIO m)
 discardChunks = awaitForever (const (return ()))
 
 -- | Conduit of process.
-conduitProcess
-  :: (MonadResource m)
-     => CreateProcess
-     -> Conduit Chunk m Chunk
+conduitProcess :: (MonadResource m)
+               => CreateProcess -> Conduit Chunk m Chunk
 conduitProcess cp =
-  bracketP createp
-           closep
-           (\(Just cin,Just cout,Just cerr,ph) ->
-              do let proxy =
-                       do b <- liftIO (hReady' cout)
-                          when (not b) exit
-                          out <- liftIO (S.hGetSome cout bufSize)
-                          (void . lift . lift) (yield (Right out))
-                 end <- repeatLoopT
-                          (do repeatLoopT proxy
-                              end <- liftIO (getProcessExitCode ph)
-                              when (isJust end)
-                                   (exitWith end)
-                              inp <- lift await
-                              case inp of
-                                Nothing ->
-                                  exitWith Nothing
-                                Just c ->
-                                  case c of
-                                    Left{} ->
-                                      lift (leftover c)
-                                    Right s ->
-                                      liftIO (do S.hPut cin s
-                                                 hFlush cin))
-                 liftIO (hClose cin)
-                 repeatLoopT
-                   (do out <- liftIO (S.hGetSome cout bufSize)
-                       when (S.null out) exit
-                       lift (yield (Right out)))
-                 ec <- liftIO (maybe (waitForProcess' ph) return end)
-                 case ec of
-                   ExitSuccess -> return ()
-                   ExitFailure i ->
-                     lift (monadThrow (ShellExitFailure i)))
+  bracketP createp closep startProxy
   where createp =
           createProcess
             cp {std_in = CreatePipe
                ,std_out = CreatePipe
                ,std_err = CreatePipe}
-        closep (Just cin,Just cout,_,ph) =
+        closep (Just cin,Just cout,Just cerr,ph) =
           do hClose cin
              hClose cout
+             hClose cerr
              _ <- waitForProcess' ph
              return ()
-        closep _ =
-          error "Data.Conduit.Process.closep: Unhandled case"
-        hReady' h =
-          hReady h `E.catch`
-          \(E.SomeException _) -> return False
-        waitForProcess' ph =
-          waitForProcess ph `E.catch`
-          \(E.SomeException _) ->
-            return ExitSuccess
+
+-- | Start proxying from conduit to process back to conduit.
+startProxy :: (MonadIO m,MonadThrow m)
+           => (Maybe Handle,Maybe Handle,Maybe Handle,ProcessHandle)
+           -> ConduitM Chunk Chunk m ()
+startProxy (Just cin,Just cout,Just cerr,ph) = interleave
+  where interleave =
+          do end <- proxyInterleaved
+             liftIO (hClose cin)
+             remainder cout Right
+             remainder cerr Left
+             ec <- liftIO (maybe (waitForProcess' ph) return end)
+             case ec of
+               ExitSuccess -> return ()
+               ExitFailure i ->
+                 monadThrow (ShellExitFailure i)
+        proxyInterleaved =
+          do proxy cout Right
+             proxy cerr Left
+             ended <- liftIO (getProcessExitCode ph)
+             case ended of
+               Just{} -> return ended
+               Nothing ->
+                 do minp <- await
+                    case minp of
+                      Nothing -> return Nothing
+                      Just chunk ->
+                        do case chunk of
+                             Left{} -> yield chunk
+                             Right bytes ->
+                               liftIO (do S.hPut cin bytes
+                                          hFlush cin)
+                           proxyInterleaved
+
+-- | Proxy live results from the given handle and yield them.
+proxy :: MonadIO m
+      => Handle -> (ByteString -> o) -> ConduitM i o m ()
+proxy h cons =
+  do ready <- liftIO (hReady' h)
+     if not ready
+        then return ()
+        else do bytes <- liftIO (S.hGetSome h bufSize)
+                yield (cons bytes)
+                proxy h cons
+
+-- | Proxy final results from the handle and yield them.
+remainder :: MonadIO m
+          => Handle -> (ByteString -> o) -> ConduitM i o m ()
+remainder h cons =
+  do bytes <- liftIO (S.hGetSome h bufSize)
+     if S.null bytes
+        then return ()
+        else do yield (cons bytes)
+                remainder h cons
+
+-- | Is the handle ready? Catches any exceptions.
+hReady' :: Handle -> IO Bool
+hReady' h =
+  E.catch (hReady h)
+          (\(E.SomeException _) -> return False)
+
+-- | A safer 'waitForProcess'.
+waitForProcess' :: ProcessHandle -> IO ExitCode
+waitForProcess' ph =
+  E.catch (waitForProcess ph)
+          (\(E.SomeException _) ->
+             return ExitSuccess)
