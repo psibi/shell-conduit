@@ -4,29 +4,27 @@
 -- | Reading from the process.
 
 module Data.Conduit.Shell.Process
-  -- (-- * Running scripts
-  --  run
-  --  -- * Running processes
-  -- ,Data.Conduit.Shell.Process.shell
-  -- ,Data.Conduit.Shell.Process.proc
-  --  -- * I/O chunks
-  -- ,withRights
-  -- ,redirect
-  -- ,quiet
-  -- ,writeChunks
-  -- ,discardChunks
-  -- -- * Low-level internals
-  -- ,conduitProcess
-  -- )
+  (-- * Running scripts
+   run
+   -- * Running processes
+  ,Data.Conduit.Shell.Process.shell
+  ,Data.Conduit.Shell.Process.proc
+   -- * I/O chunks
+  ,withRights
+  ,redirect
+  ,quiet
+  ,writeChunks
+  ,discardChunks
+  -- * Low-level internals
+  ,conduitProcess
+  )
   where
 
 import           Data.Conduit.Shell.Types
 
 import           Control.Applicative
 import qualified Control.Exception as E
-import           Control.Monad
 import           Control.Monad.Trans
-import           Control.Monad.Trans.Loop
 import           Control.Monad.Trans.Resource
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as S
@@ -35,8 +33,6 @@ import           Data.Conduit.List (sourceList)
 import qualified Data.Conduit.List as CL
 import           Data.Conduit.Process
 import           Data.Either
-import           Data.Maybe
-import           Data.Monoid
 import           System.Exit (ExitCode(..))
 import           System.IO
 import qualified System.Process
