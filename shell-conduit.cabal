@@ -1,5 +1,5 @@
 name:                shell-conduit
-version:             0.1
+version:             1.0
 synopsis:            Write shell scripts with Conduit
 description:         Write shell scripts with Conduit. See "Data.Conduit.Shell" for documentation.
 license:             BSD3
