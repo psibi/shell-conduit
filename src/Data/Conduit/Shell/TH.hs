@@ -54,9 +54,9 @@ generateBinaries =
 -- | Get a version of the given name available to be bound.
 getUniqueName :: String -> Q Name
 getUniqueName candidate =
-  do inScope <- recover (do void (reify (mkName candidate))
+  do inScope <- recover (return False)
+                        (do void (reify (mkName candidate))
                             return True)
-                        (return False)
      if inScope
         then getUniqueName (candidate ++ "'")
         else return (mkName candidate)
