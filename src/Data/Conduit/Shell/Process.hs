@@ -161,6 +161,9 @@ startProxy (Just cin,Just cout,Just cerr,ph) = interleave
                            proxyInterleaved
 startProxy _ = error "startProxy: unexpected arguments"
 
+-- | Concurrently yield eithers downstream.
+remainders :: MonadIO m
+           => Handle -> Handle -> ConduitM i (Either ByteString ByteString) m ()
 remainders cout cerr =
   do chan <- liftIO newChan
      void (liftIO (forkIO (remainder chan cout Right)))
