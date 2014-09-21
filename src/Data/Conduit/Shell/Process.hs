@@ -120,6 +120,7 @@ conduitProcess cp =
              hClose cerr
              _ <- waitForProcess' ph
              return ()
+        closep _ = error "conduitProcess: unexpected arguments to closep"
 
 -- | Start proxying from conduit to process back to conduit.
 startProxy :: (MonadIO m,MonadThrow m)
@@ -153,6 +154,7 @@ startProxy (Just cin,Just cout,Just cerr,ph) = interleave
                                liftIO (do S.hPut cin bytes
                                           hFlush cin)
                            proxyInterleaved
+startProxy _ = error "startProxy: unexpected arguments"
 
 -- | Proxy live results from the given handle and yield them.
 proxy :: MonadIO m
