@@ -163,8 +163,8 @@ startProxy _ = error "startProxy: unexpected arguments"
 
 remainders cout cerr =
   do chan <- liftIO newChan
-     void (liftIO (forkIO (remainder "stdout" chan cout Right)))
-     void (liftIO (forkIO (remainder "stderr" chan cerr Left)))
+     void (liftIO (forkIO (remainder chan cout Right)))
+     void (liftIO (forkIO (remainder chan cerr Left)))
      fix (\loop done ->
             case done of
               Just (These () ()) -> return ()
@@ -190,17 +190,16 @@ remainders cout cerr =
          (Nothing :: Maybe (These () ()))
 
 -- | Proxy final results from the handle and yield them.
-remainder :: String
-          -> Chan (Either (Maybe ByteString) (Maybe ByteString))
+remainder :: Chan (Either (Maybe ByteString) (Maybe ByteString))
           -> Handle
           -> (Maybe ByteString -> Either (Maybe ByteString) (Maybe ByteString))
           -> IO ()
-remainder l chan h cons =
+remainder chan h cons =
   do bytes <- S.hGetSome h bufSize
      if S.null bytes
         then writeChan chan (cons Nothing)
         else do writeChan chan (cons (Just bytes))
-                remainder l chan h cons
+                remainder chan h cons
 
 -- | Proxy live results from the given handle and yield them.
 proxy :: MonadIO m
