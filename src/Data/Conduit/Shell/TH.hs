@@ -71,6 +71,7 @@ remap name =
    "truncate" -> "truncate'"
    "lex" -> "lex'"
    "env" -> "env'"
+   "shell" -> "shell'"
    e -> e
 
 -- | Get a list of all binaries in PATH.
