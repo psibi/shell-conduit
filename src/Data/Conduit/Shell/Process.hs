@@ -10,6 +10,8 @@ module Data.Conduit.Shell.Process
   ,Data.Conduit.Shell.Process.shell
   ,Data.Conduit.Shell.Process.proc
    -- * I/O chunks
+  ,bytes
+  ,unbytes
   ,withRights
   ,redirect
   ,quiet
@@ -41,6 +43,14 @@ import           Data.These
 import           System.Exit (ExitCode(..))
 import           System.IO
 import qualified System.Process
+
+-- | Extract the stdout values from the stream, discarding any errors.
+bytes :: Monad m => Conduit Chunk m ByteString
+bytes = CL.mapMaybe (either (const Nothing) Just)
+
+-- | Extract the stdout values from the stream, discarding any errors.
+unbytes :: Monad m => Conduit ByteString m Chunk
+unbytes = CL.map Right
 
 -- | Run a shell command.
 shell :: (MonadResource m) => String -> Conduit Chunk m Chunk
