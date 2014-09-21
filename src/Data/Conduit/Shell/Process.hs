@@ -23,7 +23,11 @@ module Data.Conduit.Shell.Process
 import           Data.Conduit.Shell.Types
 
 import           Control.Applicative
+import           Control.Concurrent (forkIO)
+import           Control.Concurrent.Chan
 import qualified Control.Exception as E
+import           Control.Monad
+import           Control.Monad.Fix
 import           Control.Monad.Trans
 import           Control.Monad.Trans.Resource
 import           Data.ByteString (ByteString)
@@ -32,6 +36,8 @@ import           Data.Conduit
 import           Data.Conduit.List (sourceList)
 import qualified Data.Conduit.List as CL
 import           Data.Conduit.Process
+import           Data.Semigroup
+import           Data.These
 import           System.Exit (ExitCode(..))
 import           System.IO
 import qualified System.Process
@@ -130,8 +136,7 @@ startProxy (Just cin,Just cout,Just cerr,ph) = interleave
   where interleave =
           do end <- proxyInterleaved
              liftIO (hClose cin)
-             remainder cout Right
-             remainder cerr Left
+             remainders cout cerr
              ec <- liftIO (maybe (waitForProcess' ph) return end)
              case ec of
                ExitSuccess -> return ()
@@ -156,6 +161,47 @@ startProxy (Just cin,Just cout,Just cerr,ph) = interleave
                            proxyInterleaved
 startProxy _ = error "startProxy: unexpected arguments"
 
+remainders cout cerr =
+  do chan <- liftIO newChan
+     void (liftIO (forkIO (remainder "stdout" chan cout Right)))
+     void (liftIO (forkIO (remainder "stderr" chan cerr Left)))
+     fix (\loop done ->
+            case done of
+              Just (These () ()) -> return ()
+              _ ->
+                do chunk <- liftIO (readChan chan)
+                   case chunk of
+                     Left mchunk ->
+                       case mchunk of
+                         Nothing ->
+                           loop (done <>
+                                 Just (This ()))
+                         Just chunk ->
+                           do yield (Left chunk)
+                              loop done
+                     Right mchunk ->
+                       case mchunk of
+                         Nothing ->
+                           loop (done <>
+                                 Just (That ()))
+                         Just chunk ->
+                           do yield (Right chunk)
+                              loop done)
+         (Nothing :: Maybe (These () ()))
+
+-- | Proxy final results from the handle and yield them.
+remainder :: String
+          -> Chan (Either (Maybe ByteString) (Maybe ByteString))
+          -> Handle
+          -> (Maybe ByteString -> Either (Maybe ByteString) (Maybe ByteString))
+          -> IO ()
+remainder l chan h cons =
+  do bytes <- S.hGetSome h bufSize
+     if S.null bytes
+        then writeChan chan (cons Nothing)
+        else do writeChan chan (cons (Just bytes))
+                remainder l chan h cons
+
 -- | Proxy live results from the given handle and yield them.
 proxy :: MonadIO m
       => Handle -> (ByteString -> o) -> ConduitM i o m ()
@@ -166,16 +212,6 @@ proxy h cons =
         else do bytes <- liftIO (S.hGetSome h bufSize)
                 yield (cons bytes)
                 proxy h cons
-
--- | Proxy final results from the handle and yield them.
-remainder :: MonadIO m
-          => Handle -> (ByteString -> o) -> ConduitM i o m ()
-remainder h cons =
-  do bytes <- liftIO (S.hGetSome h bufSize)
-     if S.null bytes
-        then return ()
-        else do yield (cons bytes)
-                remainder h cons
 
 -- | Is the handle ready? Catches any exceptions.
 hReady' :: Handle -> IO Bool

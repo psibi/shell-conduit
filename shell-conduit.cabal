@@ -36,3 +36,5 @@ library
                    , transformers
                    , transformers-base
                    , text
+                   , semigroups
+                   , these
