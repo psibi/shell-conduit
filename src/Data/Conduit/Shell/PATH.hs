@@ -7,8 +7,9 @@
 
 module Data.Conduit.Shell.PATH where
 
+import Control.Monad
+import Data.Conduit.Shell.Process
 import Data.Conduit.Shell.TH
 import Data.List
-import Control.Monad
 
 $(generateBinaries)
