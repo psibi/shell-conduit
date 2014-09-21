@@ -24,16 +24,17 @@ import System.FilePath
 generateBinaries :: Q [Dec]
 generateBinaries =
   do bins <- runIO getAllBinaries
-     return (map (\(name,bin) ->
-                    FunD (mkName name)
-                         [Clause []
-                                 (NormalB (AppE (VarE 'variadicProcess)
-                                                (LitE (StringL bin))))
-                                 []])
-                 (nubBy (on (==) fst)
-                        (filter (not . null . fst)
-                                (map (normalize &&& id) bins))))
-  where normalize = remap . uncapitalize . go
+     mapM (\(name,bin) ->
+             do uniqueName <- getUniqueName name
+                return (FunD uniqueName
+                             [Clause []
+                                     (NormalB (AppE (VarE 'variadicProcess)
+                                                    (LitE (StringL bin))))
+                                     []]))
+          (nubBy (on (==) fst)
+                 (filter (not . null . fst)
+                         (map (normalize &&& id) bins)))
+  where normalize = uncapitalize . go
           where go (c:cs)
                   | c == '-' || c == '_' =
                     case go cs of
@@ -50,29 +51,15 @@ generateBinaries =
           ['a' .. 'z'] ++
           ['0' .. '9']
 
--- | Remap conflicting names.
-remap :: [Char] -> [Char]
-remap name =
-  case name of
-   "head" -> "head'"
-   "seq" -> "seq'"
-   "zip" -> "zip'"
-   "print" -> "print'"
-   "id" -> "id'"
-   "unzip" -> "unzip'"
-   "join" -> "join'"
-   "init" -> "init'"
-   "last" -> "last'"
-   "tail" -> "tail'"
-   "find" -> "find'"
-   "sort" -> "sort'"
-   "sum" -> "sum'"
-   "compare" -> "compare'"
-   "truncate" -> "truncate'"
-   "lex" -> "lex'"
-   "env" -> "env'"
-   "shell" -> "shell'"
-   e -> e
+-- | Get a version of the given name available to be bound.
+getUniqueName :: String -> Q Name
+getUniqueName candidate =
+  do inScope <- recover (do void (reify (mkName candidate))
+                            return True)
+                        (return False)
+     if inScope
+        then getUniqueName (candidate ++ "'")
+        else return (mkName candidate)
 
 -- | Get a list of all binaries in PATH.
 getAllBinaries :: IO [FilePath]
