@@ -34,7 +34,6 @@ import           Data.Conduit
 import           Data.Conduit.List (sourceList)
 import qualified Data.Conduit.List as CL
 import           Data.Conduit.Process
-import           Data.Either
 import           Data.Maybe
 import           Data.Monoid
 import           System.Exit (ExitCode(..))
@@ -192,3 +191,8 @@ waitForProcess' ph =
   E.catch (waitForProcess ph)
           (\(E.SomeException _) ->
              return ExitSuccess)
+
+-- | Polyfill for base < 4.7
+isLeft :: Either a b -> Bool
+isLeft (Left _) = True
+isLeft _        = False
