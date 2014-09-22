@@ -24,16 +24,7 @@ import Control.Monad.Trans.Resource
 import Data.ByteString (ByteString)
 import Data.Conduit
 import Data.Typeable
-
--- | A chunk, either stdout/stdin or stderr. Used for both input and
--- output.
-type Chunk = Either ByteString ByteString
-
--- | Either stdout or stderr.
-data ChunkType
-  = Stderr -- ^ Stderr.
-  | Stdout -- ^ Stdin or stdout.
-  deriving (Eq,Enum,Bounded)
+import System.IO (Handle)
 
 -- | Shell transformer.
 newtype ShellT m a =

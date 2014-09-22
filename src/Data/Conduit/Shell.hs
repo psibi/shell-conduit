@@ -22,7 +22,7 @@
 -- Piping with Conduit's normal pipe will predictably pipe things
 -- together, as in Bash:
 --
--- >>> run (do shell "echo Hello" $= sed "s/l/a/"; echo "OK!")
+-- >>> run (do shell "echo Hello" $| sed "s/l/a/"; echo "OK!")
 -- Healo
 -- OK!
 --
@@ -89,14 +89,11 @@ module Data.Conduit.Shell
    -- * Running custom processes
   ,shell
   ,proc
-  -- * I/O chunks
-  ,withRights
-  ,redirect
-  ,quiet
-  ,writeChunks
-  ,discardChunks
-   -- * Re-exports
-   -- $exports
+  ,($|)
+  ,Segment
+  ,ProcessException(..)
+  -- * Re-exports
+  -- $exports
   ,module Data.Conduit.Shell.PATH
   ,module Data.Conduit.Shell.Types
   ,module Data.Conduit.Shell.Variadic

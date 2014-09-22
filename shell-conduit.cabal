@@ -20,7 +20,8 @@ library
                      Data.Conduit.Shell.Process
                      Data.Conduit.Shell.Types
                      Data.Conduit.Shell.Variadic
-  build-depends:     base >= 4 && <5
+  build-depends:     async >= 2.0.1.5
+                   , base >= 4 && <5
                    , bytestring
                    , conduit
                    , conduit-extra
@@ -31,10 +32,11 @@ library
                    , monads-tf
                    , process
                    , resourcet
+                   , semigroups
                    , split
                    , template-haskell
+                   , text
+                   , these
                    , transformers
                    , transformers-base
-                   , text
-                   , semigroups
-                   , these
+                   , unix >= 2.7.0.1

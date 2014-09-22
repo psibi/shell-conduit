@@ -26,22 +26,14 @@ variadicProcess :: (ProcessType r)
 variadicProcess name = spr name []
 
 -- | Make the final conduit.
-makeProcessLauncher :: (MonadResource m)
-                    => String -> [ST.Text] -> Conduit Chunk m Chunk
+makeProcessLauncher :: String -> [ST.Text] -> Segment ()
 makeProcessLauncher name args = proc name (map ST.unpack args)
 
 -- | Process return type.
 class ProcessType t where
     spr :: String -> [ST.Text] -> t
 
--- | The real type should be:
---
--- @ConduitM Chunk Chunk m ()@
---
--- But with this more liberal instance head we catch all cases in the
--- instance resolver, and then apply the equality restrictions later.
---
-instance (MonadResource m, c ~ Chunk, c' ~ Chunk, r ~ ()) => ProcessType (ConduitM c c' m r) where
+instance (r ~ ()) => ProcessType (Segment r) where
     spr name args = makeProcessLauncher name (reverse args)
 
 -- | Accept strings as arguments.
