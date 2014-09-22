@@ -100,12 +100,10 @@ module Data.Conduit.Shell
   ,module Data.Conduit.Shell.PATH
   ,module Data.Conduit.Shell.Types
   ,module Data.Conduit.Shell.Variadic
-  ,module Data.Conduit.Filesystem
   ,module Data.Conduit)
   where
 
 import Data.Conduit
-import Data.Conduit.Filesystem
 import qualified Data.Conduit.Shell.PATH
 import Data.Conduit.Shell.PATH
 import Data.Conduit.Shell.Process
