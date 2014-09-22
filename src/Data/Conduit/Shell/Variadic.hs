@@ -9,12 +9,9 @@ module Data.Conduit.Shell.Variadic
   ,CmdArg(..))
   where
 
-import           Control.Monad.Trans.Resource
 import qualified Data.ByteString as SB
 import qualified Data.ByteString.Lazy as LB
-import           Data.Conduit
 import           Data.Conduit.Shell.Process
-import           Data.Conduit.Shell.Types
 import qualified Data.Text as ST
 import qualified Data.Text.Encoding as ST
 import qualified Data.Text.Lazy as LT

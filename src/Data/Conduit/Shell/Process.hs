@@ -29,7 +29,6 @@ import qualified Data.ByteString as S
 import           Data.Conduit
 import           Data.Conduit.Binary
 import qualified Data.Conduit.List as CL
-import           Data.Conduit.Shell.Types
 import           Data.Typeable
 import           System.Exit
 import           System.IO
@@ -61,10 +60,9 @@ instance MonadIO Segment where
 
 -- | Process handles: @stdin@, @stdout@, @stderr@
 data Handles =
-  Handles {hin :: Handle -- ^ stdin
-          ,hout :: Handle -- ^ stdout
-          ,herr :: Handle -- ^ stderr
-          }
+  Handles Handle -- ^ stdin
+          Handle -- ^ stdout
+          Handle -- ^ stderr
 
 -- | Process running exception.
 data ProcessException =
