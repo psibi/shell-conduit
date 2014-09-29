@@ -82,7 +82,7 @@ main =
           fix (\loop ->
                  do echo "Waiting for it to terminate ..."
                     sleep "1"
-                    (ps "-C" name $| discardChunks >> loop) <|> return ())
+                    (ps "-C" name >> loop) <|> return ())
           shell "dist/build/ircbrowse/ircbrowse ircbrowse.conf")
   where name = "ircbrowse"
 ```
