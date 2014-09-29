@@ -21,10 +21,8 @@ import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Control
 import Control.Monad.Trans.Resource
-import Data.ByteString (ByteString)
 import Data.Conduit
 import Data.Typeable
-import System.IO (Handle)
 
 -- | Shell transformer.
 newtype ShellT m a =

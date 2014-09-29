@@ -9,8 +9,7 @@ module Data.Conduit.Shell.Process
   (-- * Running scripts
    run
    -- * Running processes
-  ,liftConduit
-  ,liftProcess
+  ,conduit
   ,Data.Conduit.Shell.Process.shell
   ,Data.Conduit.Shell.Process.proc
   ,($|)
@@ -23,6 +22,7 @@ module Data.Conduit.Shell.Process
 import           Control.Applicative
 import           Control.Concurrent.Async
 import           Control.Exception
+import           Control.Monad
 import           Control.Monad.IO.Class
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as S
@@ -55,14 +55,18 @@ instance Monad Segment where
                 conduitToProcess c handles
               SegmentProcess p -> p handles)
 
+instance Functor Segment where
+  fmap = liftM
+
+instance Applicative Segment where
+  (<*>) = ap; pure = return
+
 instance MonadIO Segment where
   liftIO x = SegmentProcess (const x)
 
 -- | Process handles: @stdin@, @stdout@, @stderr@
 data Handles =
-  Handles Handle -- ^ stdin
-          Handle -- ^ stdout
-          Handle -- ^ stderr
+  Handles Handle Handle Handle
 
 -- | Process running exception.
 data ProcessException =
@@ -134,8 +138,8 @@ x $| y = x `fuseSegment` y
 infixl 0 $|
 
 -- | Lift a conduit into a segment.
-liftConduit :: (a ~ ByteString,ToChunk b,m ~ IO) => ConduitM a b m r -> Segment r
-liftConduit f = SegmentConduit (f `fuseUpstream` CL.map toChunk)
+conduit :: (a ~ ByteString,ToChunk b,m ~ IO) => ConduitM a b m r -> Segment r
+conduit f = SegmentConduit (f `fuseUpstream` CL.map toChunk)
 
 -- | Lift a process into a segment.
 liftProcess :: CreateProcess -> Segment ()

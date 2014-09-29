@@ -15,10 +15,6 @@
 -- The monad instance of Conduit will simply pass along all stdout
 -- results:
 --
--- >>> run (do echo "Hello"; sed "s/l/a/"; echo "OK!")
--- Hello
--- OK!
---
 -- Piping with Conduit's normal pipe will predictably pipe things
 -- together, as in Bash:
 --
@@ -28,21 +24,33 @@
 --
 -- Streaming pipes (aka lazy pipes) is also possible:
 --
--- >>> run (do tail' "foo.txt" "-f" $= grep "--line-buffered" "Hello")
+-- >>> run (tail' "/tmp/foo.txt" "-f" $| grep "--line-buffered" "Hello")
 -- Hello, world!
 -- Oh, hello!
 --
 -- (Remember that @grep@ needs @--line-buffered@ if it is to output
 -- things line-by-line).
 --
+-- Run custom processes via the @proc@ function:
+--
+-- >>> run (proc "ls" [])
+-- dist  LICENSE  README.md  Setup.hs  shell-conduit.cabal  src  TAGS  TODO.org
+--
+-- Run shell commands via the @shell@ function:
+--
+-- >>> run (shell "ls")
+-- dist  LICENSE  README.md  Setup.hs  shell-conduit.cabal  src  TAGS  TODO.org
+--
+-- Run conduits via the @conduit@ function:
+--
+-- >>> run (cat "/tmp/foo.txt" $| conduit (do Just x <- await; yield x))
+-- Hello!
+--
 -- == How it works
 --
 -- All executable names in the @PATH@ at compile-time are brought into
 -- scope as runnable process conduits e.g. @ls@ or @grep@.
 --
--- Stdin/out and stderr are handled as an 'Either' type: 'Chunk'
---
--- 'Left' is stderr, 'Right' is @stdin@/@stdout@.
 --
 -- All processes are bound as variadic process calling functions, like this:
 --
@@ -54,9 +62,9 @@
 -- But ultimately the types end up being:
 --
 -- @
--- rmdir "foo" :: Conduit Chunk m Chunk
--- ls :: Conduit Chunk m Chunk
--- ls "." :: Conduit Chunk m Chunk
+-- rmdir "foo" :: Segment ()
+-- ls :: Segment ()
+-- ls "." :: Segment ()
 -- @
 --
 -- Etc.
@@ -64,8 +72,7 @@
 -- Run all shell scripts with 'run':
 --
 -- @
--- run :: (MonadIO m, MonadBaseControl IO m)
---     => Conduit Chunk (ShellT m) Chunk -> m ()
+-- run :: Segment r -> IO r
 -- @
 --
 -- == String types
@@ -86,9 +93,11 @@
 module Data.Conduit.Shell
   (-- * Running scripts
    run
-   -- * Running custom processes
+   -- * Making segments
   ,shell
   ,proc
+  ,conduit
+  -- * Composition of segments
   ,($|)
   ,Segment
   ,ProcessException(..)
