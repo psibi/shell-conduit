@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE RankNTypes #-}
@@ -61,6 +62,21 @@ instance Functor Segment where
 instance Applicative Segment where
   (<*>) = ap; pure = return
 
+instance Alternative Segment where
+  this <|> that =
+    do ex <- tryS this
+       case ex of
+         Right x -> pure x
+         Left (e :: ProcessException) -> that
+  empty = throw ProcessEmpty
+
+-- | Try something in a segment.
+tryS :: Exception e => Segment r -> Segment (Either e r)
+tryS s =
+  case s of
+    SegmentConduit c -> SegmentConduit (tryC c)
+    SegmentProcess f -> SegmentProcess (\h -> try (f h))
+
 instance MonadIO Segment where
   liftIO x = SegmentProcess (const x)
 
@@ -69,9 +85,10 @@ data Handles =
   Handles Handle Handle Handle
 
 -- | Process running exception.
-data ProcessException =
-  ProcessException CreateProcess
-                   ExitCode
+data ProcessException
+  = ProcessException CreateProcess
+                     ExitCode
+  | ProcessEmpty
   deriving (Typeable)
 
 instance Exception ProcessException
@@ -83,7 +100,7 @@ instance Show ProcessException where
               ShellCommand s -> "shell command " ++ show s
               RawCommand f args ->
                 "raw command: " ++
-                show (f : args)
+                unwords (f : map show args)
            ," returned a failure exit code: "
            ,case ec of
               ExitFailure i -> show i

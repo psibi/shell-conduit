@@ -30,7 +30,7 @@ main =
 Piping of processes and normal conduits is possible:
 
 ``` haskell
-λ> run (ls $= grep "Key" $= shell "cat" $= CL.map (second (S8.map toUpper)))
+λ> run (ls $| grep "Key" $| shell "cat" $| CL.map (second (S8.map toUpper)))
 KEYBOARD.HI
 KEYBOARD.HS
 KEYBOARD.O
@@ -47,7 +47,7 @@ hi
 λ> run (do shell "echo sup"; sed "s/u/a/"; shell "echo hi")
 sup
 hi
-λ> run (do shell "echo sup" $= sed "s/u/a/"; shell "echo hi")
+λ> run (do shell "echo sup" $| sed "s/u/a/"; shell "echo hi")
 sap
 hi
 ```
@@ -58,7 +58,7 @@ Live streaming between pipes like in normal shell scripting is
 possible:
 
 ``` haskell
-λ> run (do tail' "/tmp/example.txt" "-f" $= grep "--line-buffered" "Hello")
+λ> run (do tail' "/tmp/example.txt" "-f" $| grep "--line-buffered" "Hello")
 Hello, world!
 Oh, hello!
 ```
@@ -82,7 +82,7 @@ main =
           fix (\loop ->
                  do echo "Waiting for it to terminate ..."
                     sleep "1"
-                    (ps "-C" name $= discardChunks >> loop) <|> return ())
+                    (ps "-C" name $| discardChunks >> loop) <|> return ())
           shell "dist/build/ircbrowse/ircbrowse ircbrowse.conf")
   where name = "ircbrowse"
 ```
@@ -101,14 +101,6 @@ main =
 All executable names in the `PATH` at compile-time are brought into
 scope as runnable process conduits e.g. `ls` or `grep`.
 
-Stdin/out and stderr are handled as an Either type.
-
-``` haskell
-type Chunk = Either ByteString ByteString
-```
-
-`Left` is stderr, `Right` is stdin/stdout.
-
 All processes are bound as variadic process calling functions, like this:
 
 ``` haskell
@@ -119,9 +111,9 @@ ls :: ProcessType r => r
 But ultimately the types end up being:
 
 ``` haskell
-rmdir "foo" :: Conduit Chunk m Chunk
-ls :: Conduit Chunk m Chunk
-ls "." :: Conduit Chunk m Chunk
+rmdir "foo" :: Segment r
+ls :: Segment r
+ls "." :: Segment r
 ```
 
 Etc.
@@ -129,12 +121,10 @@ Etc.
 Run all shell scripts with
 
 ``` haskell
-run :: (MonadIO m, MonadBaseControl IO m)
-    => Conduit Chunk (ShellT m) Chunk -> m ()
+run :: run :: Segment r -> IO r
 ```
 
-The `ShellT` type has a handy `Alternative` instance and can store
-info like whether to echo all processes run similar to Bash's `set -x`.
+The `Segment` type has a handy `Alternative` instance.
 
 ### String types
 
