@@ -87,6 +87,33 @@ main =
   where name = "ircbrowse"
 ```
 
+##### Running custom things
+
+You can run processes directly:
+
+``` haskell
+λ> run (proc "ls" [])
+dist	  LICENSE    Setup.hs		  src	TODO.org
+examples  README.md  shell-conduit.cabal  TAGS
+```
+
+Or shell commands:
+
+``` haskell
+λ> run (shell "ls")
+dist	  LICENSE    Setup.hs		  src	TODO.org
+examples  README.md  shell-conduit.cabal  TAGS
+```
+
+Or conduits:
+
+``` haskell
+λ> run (cat $| conduit (awaitForever yield))
+hello
+hello
+Interrupted.
+```
+
 ##### Keyboard configuration
 
 ``` haskell
