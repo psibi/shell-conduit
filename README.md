@@ -30,10 +30,16 @@ main =
 Piping of processes and normal conduits is possible:
 
 ``` haskell
-λ> run (ls $| grep "Key" $| shell "cat" $| CL.map (second (S8.map toUpper)))
-KEYBOARD.HI
-KEYBOARD.HS
-KEYBOARD.O
+λ> run (ls $| grep ".*" $| shell "cat" $| conduit (CL.map (S8.map toUpper)))
+DIST
+EXAMPLES
+LICENSE
+README.MD
+SETUP.HS
+SHELL-CONDUIT.CABAL
+SRC
+TAGS
+TODO.ORG
 ```
 
 ##### Running actions in sequence and piping
@@ -42,9 +48,6 @@ Results are outputted to stdout unless piped into other processes:
 
 ``` haskell
 λ> run (do shell "echo sup"; shell "echo hi")
-sup
-hi
-λ> run (do shell "echo sup"; sed "s/u/a/"; shell "echo hi")
 sup
 hi
 λ> run (do shell "echo sup" $| sed "s/u/a/"; shell "echo hi")
