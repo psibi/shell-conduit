@@ -151,7 +151,7 @@ Etc.
 Run all shell scripts with
 
 ``` haskell
-run :: run :: Segment r -> IO r
+run :: Segment r -> IO r
 ```
 
 The `Segment` type has a handy `Alternative` instance.
