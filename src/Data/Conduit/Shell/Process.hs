@@ -11,6 +11,7 @@ module Data.Conduit.Shell.Process
    run
    -- * Running processes
   ,conduit
+  ,conduitEither
   ,Data.Conduit.Shell.Process.shell
   ,Data.Conduit.Shell.Process.proc
   ,($|)
@@ -155,8 +156,12 @@ x $| y = x `fuseSegment` y
 infixl 0 $|
 
 -- | Lift a conduit into a segment.
-conduit :: (a ~ ByteString,ToChunk b,m ~ IO) => ConduitM a b m r -> Segment r
+conduit :: (a ~ ByteString,m ~ IO) => ConduitM a ByteString m r -> Segment r
 conduit f = SegmentConduit (f `fuseUpstream` CL.map toChunk)
+
+-- | Lift a conduit into a segment, which can yield stderr.
+conduitEither :: (a ~ ByteString,m ~ IO) => ConduitM a (Either ByteString ByteString) m r -> Segment r
+conduitEither f = SegmentConduit (f `fuseUpstream` CL.map toChunk)
 
 -- | Lift a process into a segment.
 liftProcess :: CreateProcess -> Segment ()
