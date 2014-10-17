@@ -110,11 +110,11 @@ module Data.Conduit.Shell
   where
 
 import Data.Conduit
-import qualified Data.Conduit.Shell.PATH
-import Data.Conduit.Shell.PATH
+import Data.Conduit.Shell.PATH hiding (strings)
 import Data.Conduit.Shell.Process
 import Data.Conduit.Shell.Types
 import Data.Conduit.Shell.Variadic
+import qualified Data.Text.Encoding as T
 
 -- $exports
 --

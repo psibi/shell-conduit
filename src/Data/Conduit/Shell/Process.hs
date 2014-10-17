@@ -18,6 +18,7 @@ module Data.Conduit.Shell.Process
   ,Segment
   ,ProcessException(..)
   ,ToChunk(..)
+  ,tryS
   )
   where
 

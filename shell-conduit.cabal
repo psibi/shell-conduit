@@ -19,6 +19,7 @@ library
                      Data.Conduit.Shell.TH
                      Data.Conduit.Shell.Process
                      Data.Conduit.Shell.Types
+                     Data.Conduit.Shell.Segments
                      Data.Conduit.Shell.Variadic
   build-depends:     async >= 2.0.1.5
                    , base >= 4 && <5
