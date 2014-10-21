@@ -1,3 +1,5 @@
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -14,10 +16,16 @@ module Data.Conduit.Shell.Process
   ,conduitEither
   ,Data.Conduit.Shell.Process.shell
   ,Data.Conduit.Shell.Process.proc
+  -- * Redirecting
+  ,redirectStdout
+  ,redirectStderr
+  ,Redirection(..)
+  -- * Piping
   ,($|)
   ,Segment
   ,ProcessException(..)
   ,ToChunk(..)
+  -- * Error handling
   ,tryS
   )
   where
@@ -28,6 +36,7 @@ import           Control.Exception
 import           Control.Monad
 import           Control.Monad.IO.Class
 import           Data.ByteString (ByteString)
+import qualified Data.ByteString as L
 import qualified Data.ByteString as S
 import           Data.Conduit
 import           Data.Conduit.Binary
@@ -43,6 +52,66 @@ import           System.Process.Internals (createProcess_)
 data Segment r
   = SegmentConduit (ConduitM ByteString (Either ByteString ByteString) IO r)
   | SegmentProcess (Handles -> IO r)
+
+data Stderr
+data Stdout
+
+-- | A redirection from either stdout to stderr, stderr to stdout, or
+-- to a handle.
+data Redirection p where
+  ToStderr :: Redirection Stdout
+  ToStdout :: Redirection Stderr
+  ToHandle :: Handle -> Redirection p
+
+-- | Redirect stderr.
+redirectStderr :: Redirection Stderr -> Segment () -> Segment ()
+redirectStderr r s =
+  case s of
+    SegmentConduit c ->
+      SegmentConduit
+        (c $=
+         awaitForever
+           (\c ->
+              case c of
+                Left e ->
+                  case r of
+                    ToStdout -> yield (Right e)
+                    ToHandle h ->
+                      liftIO (L.hPut h e)
+                Right r -> yield (Right r)))
+    SegmentProcess f ->
+      SegmentProcess
+        (\(Handles hin hout herr) ->
+           f (Handles hin
+                      hout
+                      (case r of
+                         ToStdout -> hout
+                         ToHandle h -> h)))
+
+-- | Redirect stdout.
+redirectStdout :: Redirection Stdout -> Segment () -> Segment ()
+redirectStdout r s =
+  case s of
+    SegmentConduit c ->
+      SegmentConduit
+        (c $=
+         awaitForever
+           (\c ->
+              case c of
+                Right e ->
+                  case r of
+                    ToStderr -> yield (Left e)
+                    ToHandle h ->
+                      liftIO (L.hPut h e)
+                Left r -> yield (Left r)))
+    SegmentProcess f ->
+      SegmentProcess
+        (\(Handles hin hout herr) ->
+           f (Handles hin
+                      (case r of
+                         ToStderr -> herr
+                         ToHandle h -> h)
+                      herr))
 
 instance Monad Segment where
   return = SegmentConduit . return

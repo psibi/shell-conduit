@@ -97,6 +97,10 @@ module Data.Conduit.Shell
   ,shell
   ,proc
   ,conduit
+  -- * Redirection
+  ,redirectStderr
+  ,redirectStdout
+  ,Redirection(..)
   -- * Composition of segments
   ,($|)
   ,Segment
