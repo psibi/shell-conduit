@@ -9,9 +9,13 @@
 module Data.Conduit.Shell.Process
   (-- * Running scripts
    run
-   -- * Running processes
+   -- * Conduit types
+  ,text
+  ,bytes
+  -- * General conduits
   ,conduit
   ,conduitEither
+  -- * Running processes
   ,Data.Conduit.Shell.Process.shell
   ,Data.Conduit.Shell.Process.proc
   ,($|)
@@ -27,11 +31,15 @@ import           Control.Concurrent.Async
 import           Control.Exception
 import           Control.Monad
 import           Control.Monad.IO.Class
+import           Control.Monad.Trans.Resource
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as S
 import           Data.Conduit
 import           Data.Conduit.Binary
 import qualified Data.Conduit.List as CL
+import           Data.Conduit.Text (Codec)
+import qualified Data.Conduit.Text as T
+import           Data.Text (Text)
 import           Data.Typeable
 import           System.Exit
 import           System.IO
@@ -155,6 +163,14 @@ run (SegmentProcess p) =
 ($|) :: Segment () -> Segment b -> Segment b
 x $| y = x `fuseSegment` y
 infixl 0 $|
+
+-- | Work on the stream as 'Text' values from UTF-8.
+text :: (r ~ (),m ~ IO) => ConduitM Text Text m r -> Segment r
+text conduit = bytes (T.decodeUtf8 $= conduit $= T.encodeUtf8)
+
+-- | Lift a conduit into a segment.
+bytes :: (a ~ ByteString,m ~ IO) => ConduitM a ByteString m r -> Segment r
+bytes f = SegmentConduit (f `fuseUpstream` CL.map toChunk)
 
 -- | Lift a conduit into a segment.
 conduit :: (a ~ ByteString,m ~ IO) => ConduitM a ByteString m r -> Segment r

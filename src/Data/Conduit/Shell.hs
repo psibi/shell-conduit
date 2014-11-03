@@ -97,6 +97,8 @@ module Data.Conduit.Shell
   ,shell
   ,proc
   ,conduit
+  ,text
+  ,bytes
   -- * Composition of segments
   ,($|)
   ,Segment
