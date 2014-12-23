@@ -19,6 +19,8 @@ import           System.Directory
 
 -- | Helpful CD command.
 cd :: (MonadIO m,CmdArg arg) => arg -> m ()
-cd fp = liftIO (setCurrentDirectory (T.unpack (toTextArg fp)))
+cd = liftIO . setCurrentDirectory . T.unpack . toTextArg
 
 $(generateBinaries)
+
+
