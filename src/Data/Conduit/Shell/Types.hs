@@ -8,6 +8,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE CPP #-}
 
 -- | All types.
 
@@ -32,10 +33,18 @@ newtype ShellT m a =
 deriving instance (MonadResourceBase m) => MonadBase IO (ShellT m)
 deriving instance (MonadResourceBase m) => MonadResource (ShellT m)
 
+#if MIN_VERSION_monad_control(1,0,0)
+newtype StMShell m a = StMShell{unStMGeoServer :: StM (ResourceT m) a}
+#endif
+
 -- | Dumb instance.
 instance (MonadThrow m,MonadIO m,MonadBaseControl IO m) => MonadBaseControl IO (ShellT m) where
+#if MIN_VERSION_monad_control(1,0,0)
+  type StM (ShellT m) a = StMShell m a
+#else
   newtype StM (ShellT m) a = StMShell{unStMGeoServer ::
                                     StM (ResourceT m) a}
+#endif
   liftBaseWith f =
     ShellT (liftBaseWith
               (\run ->
