@@ -44,7 +44,7 @@ import           Data.Typeable
 import           System.Exit
 import           System.IO
 import           System.Posix.IO (createPipe, fdToHandle)
-import           System.Process
+import           System.Process hiding (createPipe)
 import           System.Process.Internals (createProcess_)
 
 -- | A pipeable segment. Either a conduit or a process.
