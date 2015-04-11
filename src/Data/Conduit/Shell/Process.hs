@@ -74,7 +74,7 @@ instance Alternative Segment where
     do ex <- tryS this
        case ex of
          Right x -> pure x
-         Left (e :: ProcessException) -> that
+         Left (_ :: ProcessException) -> that
   empty = throw ProcessEmpty
 
 -- | Try something in a segment.
