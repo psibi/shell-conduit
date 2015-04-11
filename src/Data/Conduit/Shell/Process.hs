@@ -101,6 +101,7 @@ data ProcessException
 instance Exception ProcessException
 
 instance Show ProcessException where
+  show ProcessEmpty = "empty process"
   show (ProcessException cp ec) =
     concat ["The "
            ,case cmdspec cp of
