@@ -164,7 +164,7 @@ infixl 0 $|
 
 -- | Work on the stream as 'Text' values from UTF-8.
 text :: (r ~ (),m ~ IO) => ConduitM Text Text m r -> Segment r
-text conduit = bytes (T.decodeUtf8 $= conduit $= T.encodeUtf8)
+text conduit' = bytes (decodeUtf8 $= conduit' $= encodeUtf8)
 
 -- | Lift a conduit into a segment.
 bytes :: (a ~ ByteString,m ~ IO) => ConduitM a ByteString m r -> Segment r
