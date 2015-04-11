@@ -31,21 +31,18 @@ import           Control.Concurrent.Async
 import           Control.Exception
 import           Control.Monad
 import           Control.Monad.IO.Class
-import           Control.Monad.Trans.Resource
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as S
 import           Data.Conduit
 import           Data.Conduit.Binary
 import qualified Data.Conduit.List as CL
-import           Data.Conduit.Text (Codec)
-import qualified Data.Conduit.Text as T
+import           Data.Conduit.Text (encodeUtf8, decodeUtf8)
 import           Data.Text (Text)
 import           Data.Typeable
 import           System.Exit
 import           System.IO
 import           System.Posix.IO (createPipe, fdToHandle)
 import           System.Process hiding (createPipe)
-import           System.Process.Internals (createProcess_)
 
 -- | A pipeable segment. Either a conduit or a process.
 data Segment r
