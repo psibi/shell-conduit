@@ -57,7 +57,7 @@ getUniqueName candidate =
   do inScope <- recover (return False)
                         (do void (reify (mkName candidate))
                             return True)
-     if inScope || candidate == "import"
+     if inScope || candidate == "import" || candidate == "type"
         then getUniqueName (candidate ++ "'")
         else return (mkName candidate)
 

@@ -31,21 +31,18 @@ import           Control.Concurrent.Async
 import           Control.Exception
 import           Control.Monad
 import           Control.Monad.IO.Class
-import           Control.Monad.Trans.Resource
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as S
 import           Data.Conduit
 import           Data.Conduit.Binary
 import qualified Data.Conduit.List as CL
-import           Data.Conduit.Text (Codec)
-import qualified Data.Conduit.Text as T
+import           Data.Conduit.Text (encodeUtf8, decodeUtf8)
 import           Data.Text (Text)
 import           Data.Typeable
 import           System.Exit
 import           System.IO
 import           System.Posix.IO (createPipe, fdToHandle)
 import           System.Process hiding (createPipe)
-import           System.Process.Internals (createProcess_)
 
 -- | A pipeable segment. Either a conduit or a process.
 data Segment r
@@ -77,7 +74,7 @@ instance Alternative Segment where
     do ex <- tryS this
        case ex of
          Right x -> pure x
-         Left (e :: ProcessException) -> that
+         Left (_ :: ProcessException) -> that
   empty = throw ProcessEmpty
 
 -- | Try something in a segment.
@@ -104,6 +101,7 @@ data ProcessException
 instance Exception ProcessException
 
 instance Show ProcessException where
+  show ProcessEmpty = "empty process"
   show (ProcessException cp ec) =
     concat ["The "
            ,case cmdspec cp of
@@ -166,7 +164,7 @@ infixl 0 $|
 
 -- | Work on the stream as 'Text' values from UTF-8.
 text :: (r ~ (),m ~ IO) => ConduitM Text Text m r -> Segment r
-text conduit = bytes (T.decodeUtf8 $= conduit $= T.encodeUtf8)
+text conduit' = bytes (decodeUtf8 $= conduit' $= encodeUtf8)
 
 -- | Lift a conduit into a segment.
 bytes :: (a ~ ByteString,m ~ IO) => ConduitM a ByteString m r -> Segment r
