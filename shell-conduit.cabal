@@ -11,6 +11,7 @@ category:            Conduit, Scripting
 build-type:          Simple
 cabal-version:       >=1.8
 homepage:            https://github.com/psibi/shell-conduit
+extra-source-files:  CHANGELOG.md README.md
 
 library
   hs-source-dirs:    src/
