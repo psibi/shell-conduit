@@ -101,6 +101,9 @@ install:
     cabal)
       cabal --version
       travis_retry cabal update
+      # https://github.com/hvr/multi-ghc-travis/issues/29#issuecomment-133539170
+      # This happens for GHC 8.0.2
+      sed -i 's/^jobs:/-- jobs:/' ${HOME}/.cabal/config
       # Get the list of packages from the stack.yaml file
       PACKAGES=$(stack --install-ghc query locals | grep '^ *path' | sed 's@^ *path:@@')
       cabal install --only-dependencies --enable-tests --enable-benchmarks --force-reinstalls --ghc-options=-O0 --reorder-goals --max-backjumps=-1 $CABALARGS $PACKAGES
