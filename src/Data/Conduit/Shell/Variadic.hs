@@ -1,3 +1,4 @@
+{-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -34,24 +35,27 @@ instance (r ~ ()) => ProcessType (Segment r) where
     spr name args = makeProcessLauncher name (reverse args)
 
 -- | Accept strings as arguments.
-instance (ProcessType r,CmdArg a) => ProcessType (a -> r) where
-    spr name args = \a -> spr name (toTextArg a : args)
+instance (ProcessType r, CmdArgs a) => ProcessType (a -> r) where
+    spr name args = \a -> spr name (toTextArgs a ++ args)
 
 -- | Command line argument.
-class CmdArg a  where
+class CmdArg a where
   toTextArg :: a -> ST.Text
 
-instance CmdArg ST.Text where
-  toTextArg = id
+instance CmdArg ST.Text where toTextArg = id
+instance CmdArg LT.Text where toTextArg = LT.toStrict
+instance CmdArg SB.ByteString where toTextArg = ST.decodeUtf8
+instance CmdArg LB.ByteString where toTextArg = LT.toStrict . LT.decodeUtf8
+instance CmdArg String where toTextArg = ST.pack
 
-instance CmdArg LT.Text where
-  toTextArg = LT.toStrict
+class CmdArgs a where
+  toTextArgs :: a -> [ ST.Text ]
 
-instance CmdArg SB.ByteString where
-  toTextArg = ST.decodeUtf8
+instance CmdArgs ST.Text where toTextArgs = return . toTextArg
+instance CmdArgs LT.Text where toTextArgs = return . toTextArg
+instance CmdArgs SB.ByteString where toTextArgs = return . toTextArg
+instance CmdArgs LB.ByteString where toTextArgs = return . toTextArg
+instance CmdArgs String where toTextArgs = return . toTextArg
 
-instance CmdArg LB.ByteString where
-  toTextArg = LT.toStrict . LT.decodeUtf8
-
-instance CmdArg String where
-  toTextArg = ST.pack
+instance (CmdArg a) => CmdArgs [a] where
+  toTextArgs = reverse . map toTextArg
