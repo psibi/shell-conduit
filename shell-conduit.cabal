@@ -32,7 +32,7 @@ library
                    , filepath
                    , monad-control
                    , monads-tf
-                   , process
+                   , process >= 1.2.1.0
                    , resourcet
                    , semigroups
                    , split
