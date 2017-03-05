@@ -43,6 +43,16 @@ main =
        do it "shell ls" $
             do val <- run $ do strings $ shell "ls /"
                val `shouldContain` ["home"]
+     describe "ordering of arguments" $
+       do it "echo -e" $
+            do val <- run $ do strings $ echo "-e" "hello\n" "haskell"
+               val `shouldBe` ["hello", " haskell"]
+          it "mixed variant" $
+            do val <- run $ strings $ echo "-e" ["hello\n", "haskell"]
+               val `shouldBe` ["hello", " haskell"]             
+          it "list variant" $
+            do val <- run $ strings $ echo ["-e", "hello\n", "haskell"]
+               val `shouldBe` ["hello", " haskell"]             
      describe "cd" $
        do it "cd /" $
             do val <-
