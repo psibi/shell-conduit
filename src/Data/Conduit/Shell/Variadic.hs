@@ -15,7 +15,7 @@ import qualified Data.Text as ST
 import qualified Data.Text.Encoding as ST
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Lazy.Encoding as LT
-import qualified Data.List as L
+import Control.Applicative (pure)
 
 -- | A variadic process maker.
 variadicProcess
@@ -61,5 +61,15 @@ instance CmdArg String where
 
 instance CmdArg [String] where
   toTextArg = map ST.pack
-  -- instance CmdArg [String] where
---   toTextArg args = toTextArg $ L.concat $ L.intersperse (" ") args
+
+instance CmdArg [ST.Text] where
+  toTextArg = map id
+
+instance CmdArg [LT.Text] where
+  toTextArg = map LT.toStrict
+
+instance CmdArg [SB.ByteString] where
+  toTextArg = map ST.decodeUtf8
+
+instance CmdArg [LB.ByteString] where
+  toTextArg = map (LT.toStrict . LT.decodeUtf8)
