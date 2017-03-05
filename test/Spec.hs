@@ -2,10 +2,8 @@
 
 import Test.Hspec
 import Data.Conduit.Shell
-
--- Ensures that true and false functions are generated from TH
 import Data.Conduit.Shell.PATH (true, false)
-import Data.Conduit.Shell.Segments (strings)
+import Data.Conduit.Shell.Segments (strings, ignore)
 import Test.Hspec.Expectations
 import Control.Applicative
 
@@ -19,3 +17,30 @@ main =
           it "true" $
             do val <- run $ strings (true <|> echo "passed")
                val `shouldBe` []
+     describe "ls" $
+       do it "home directory check" $
+            do val <- run $ strings (ls "/")
+               val `shouldContain` ["home"]
+          it "long option" $
+            do val <- run $ strings (ls "-a" ["/"])
+               val `shouldContain` ["home"]
+     describe "multiple string usage" $
+       do it "make two directory" $
+            do val <-
+                 run $
+                 do ignore $ mkdir "-p" "mtest1" "mtest2" "mtest3"
+                    strings $ ls "."
+               run $ rmdir ["mtest1", "mtest2", "mtest3"]
+               val `shouldContain` ["mtest1", "mtest2", "mtest3"]
+     describe "list usage in variadic" $
+       do it "two directory" $
+            do val <-
+                 run $
+                 do ignore $ mkdir "-p" ["test1", "test2"]
+                    strings $ ls "."
+               run $ rmdir ["test1", "test2"]
+               val `shouldContain` ["test1", "test2"]
+     describe "shell calls" $
+       do it "shell ls" $
+            do val <- run $ do strings $ shell "ls /"
+               val `shouldContain` ["home"]
