@@ -33,12 +33,12 @@ class ProcessType t  where
 
 instance (r ~ ()) =>
          ProcessType (Segment r) where
-  spr name args = makeProcessLauncher name (reverse args)
+  spr name args = makeProcessLauncher name args
 
 -- | Accept strings as arguments.
 instance (ProcessType r, CmdArg a) =>
          ProcessType (a -> r) where
-  spr name args = \a -> spr name (toTextArg a ++ args)
+  spr name args = \a -> spr name (args ++ toTextArg a)
 
 -- | Command line argument.
 class CmdArg a  where
