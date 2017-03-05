@@ -1,4 +1,5 @@
 {-# LANGUAGE ExtendedDefaultRules #-}
+{-# LANGUAGE CPP #-}
 
 import Test.Hspec
 import Data.Conduit.Shell
@@ -46,13 +47,25 @@ main =
      describe "ordering of arguments" $
        do it "echo -e" $
             do val <- run $ do strings $ echo "-e" "hello\n" "haskell"
+#ifdef darwin_HOST_OS
+               val `shouldBe` ["-e hello", " haskell"]
+#else
                val `shouldBe` ["hello", " haskell"]
+#endif
           it "mixed variant" $
             do val <- run $ strings $ echo "-e" ["hello\n", "haskell"]
-               val `shouldBe` ["hello", " haskell"]             
+#ifdef darwin_HOST_OS
+               val `shouldBe` ["-e hello", " haskell"]
+#else
+               val `shouldBe` ["hello", " haskell"]
+#endif
           it "list variant" $
             do val <- run $ strings $ echo ["-e", "hello\n", "haskell"]
-               val `shouldBe` ["hello", " haskell"]             
+#ifdef darwin_HOST_OS
+               val `shouldBe` ["-e hello", " haskell"]
+#else
+               val `shouldBe` ["hello", " haskell"]
+#endif
      describe "cd" $
        do it "cd /" $
             do val <-
