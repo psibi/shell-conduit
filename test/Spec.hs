@@ -4,7 +4,6 @@ import Test.Hspec
 import Data.Conduit.Shell
 import Data.Conduit.Shell.PATH (true, false)
 import Data.Conduit.Shell.Segments (strings, ignore)
-import Test.Hspec.Expectations
 import Control.Applicative
 
 main :: IO ()
@@ -44,3 +43,16 @@ main =
        do it "shell ls" $
             do val <- run $ do strings $ shell "ls /"
                val `shouldContain` ["home"]
+     describe "cd" $
+       do it "cd /" $
+            do val <-
+                 run $
+                 do ignore $ cd "/"
+                    strings pwd
+               val `shouldBe` ["/"]
+          it "cd /home" $
+            do val <-
+                 run $
+                 do ignore $ cd ["/home", undefined]
+                    strings pwd
+               val `shouldBe` ["/home"]
