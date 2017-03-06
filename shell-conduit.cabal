@@ -1,17 +1,18 @@
 name:                shell-conduit
-version:             4.5.1
+version:             4.6.0
 synopsis:            Write shell scripts with Conduit
 description:         Write shell scripts with Conduit. See "Data.Conduit.Shell" for documentation.
 license:             BSD3
 license-file:        LICENSE
 author:              Chris Done
 maintainer:          Sibi Prabakaran <sibi@psibi.in>
-copyright:           2014 Chris Done
+copyright:           2014-2017 Chris Done
 category:            Conduit, Scripting
 build-type:          Simple
 cabal-version:       >=1.8
 homepage:            https://github.com/psibi/shell-conduit
 extra-source-files:  CHANGELOG.md README.md
+bug-reports:         https://github.com/psibi/shell-conduit/issues
 
 library
   hs-source-dirs:    src/
