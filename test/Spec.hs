@@ -2,7 +2,7 @@
 {-# LANGUAGE CPP #-}
 
 import Test.Hspec
-import Data.Conduit.Shell
+import Data.Conduit.Shell hiding (ignore) -- https://github.com/fpco/stackage/issues/2355#issue-212177275
 import Data.Conduit.Shell.PATH (true, false)
 import Data.Conduit.Shell.Segments (strings, ignore)
 import Control.Applicative
