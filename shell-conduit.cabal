@@ -54,7 +54,10 @@ test-suite test
                   shell-conduit,
                   hspec >= 2.1 && < 3,
                   hspec-expectations,
-                  template-haskell
+                  template-haskell,
+                  conduit,
+                  bytestring,
+                  conduit-extra
 
 source-repository head
   type:     git
