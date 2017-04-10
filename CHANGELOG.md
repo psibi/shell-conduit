@@ -1,3 +1,7 @@
+# 4.6.2
+
+* Add test for piping feature
+
 # 4.6.1
 
 * Fix import error in Stackage: https://github.com/fpco/stackage/issues/2355
