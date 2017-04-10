@@ -90,10 +90,9 @@ main =
             do (val :: [String]) <-
                  run $ strings (echo "hello" $| conduit (CL.map (S8.map toUpper)))
                val `shouldBe` ["HELLO"]
-          -- TODO: This only fails in test. But works fine when run in non test mode
-          -- it "basic piping 2" $
-          --   do (val :: [String]) <-
-          --        run $ strings (ls "/" $| grep "etc")
-          --      val `shouldBe` ["etc"]
-
-
+          it "piping of commands - example 1" $
+             do val <- run $ strings (ls "/" $| grep "etc")
+                val `shouldBe` ["etc"]
+          it "piping of commands - example 2" $
+             do val <- run $ strings (echo "hello" $| tr "[a-z]" "[A-Z]")
+                val `shouldBe` ["HELLO"]
