@@ -1,11 +1,17 @@
 {-# LANGUAGE ExtendedDefaultRules #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE CPP #-}
 
 import Test.Hspec
 import Data.Conduit.Shell hiding (ignore) -- https://github.com/fpco/stackage/issues/2355#issue-212177275
 import Data.Conduit.Shell.PATH (true, false)
 import Data.Conduit.Shell.Segments (strings, ignore)
+import qualified Data.Conduit.List as CL
+import qualified Data.Conduit.Binary as CB
+import qualified Data.ByteString.Char8 as S8
 import Control.Applicative
+import Data.ByteString
+import Data.Char (toUpper)
 
 main :: IO ()
 main =
@@ -79,3 +85,15 @@ main =
                  do ignore $ cd ["/home", undefined]
                     strings pwd
                val `shouldBe` ["/home"]
+     describe "Piping" $
+       do it "basic piping" $
+            do (val :: [String]) <-
+                 run $ strings (echo "hello" $| conduit (CL.map (S8.map toUpper)))
+               val `shouldBe` ["HELLO"]
+          -- TODO: This only fails in test. But works fine when run in non test mode
+          -- it "basic piping 2" $
+          --   do (val :: [String]) <-
+          --        run $ strings (ls "/" $| grep "etc")
+          --      val `shouldBe` ["etc"]
+
+
