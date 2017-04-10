@@ -46,7 +46,7 @@ library
 
 test-suite test
  type:            exitcode-stdio-1.0
- ghc-options:     -Wall
+ ghc-options:     -Wall -threaded
  hs-source-dirs:  test/
  main-is:         Spec.hs
     
