@@ -72,6 +72,27 @@ main =
 #else
                val `shouldBe` ["hello", " haskell"]
 #endif
+          it "list mixed variant - 1" $
+            do val <- run $ strings $ echo "-e" ["hello\n", "haskell"]
+#ifdef darwin_HOST_OS
+               val `shouldBe` ["-e hello", " haskell"]
+#else
+               val `shouldBe` ["hello", " haskell"]
+#endif
+          it "list mixed variant - 2" $
+            do val <- run $ strings $ echo "-e" ["hello\n", "haskell\n"] "world"
+#ifdef darwin_HOST_OS
+               val `shouldBe` ["-e hello", " haskell", " world"]
+#else
+               val `shouldBe` ["hello", " haskell", " world"]
+#endif
+          it "list mixed variant - 3" $
+            do val <- run $ strings $ echo "-e" ["hello\n", "haskell\n"] "world\n" ["planet"]
+#ifdef darwin_HOST_OS
+               val `shouldBe` ["-e hello", " haskell", " world", " planet"]
+#else
+               val `shouldBe` ["hello", " haskell", " world", " planet"]
+#endif
      describe "cd" $
        do it "cd /" $
             do val <-
