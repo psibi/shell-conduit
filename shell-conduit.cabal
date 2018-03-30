@@ -40,7 +40,6 @@ library
                    , template-haskell
                    , text
                    , transformers
-                   , transformers-base
                    , unix >= 2.7.0.1
 
 test-suite test
