@@ -1,3 +1,7 @@
+# 4.7.0
+
+* Port it for newer conduit and resourcet
+
 # 4.6.2
 
 * Add test for piping feature
