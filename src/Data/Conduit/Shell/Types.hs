@@ -16,7 +16,6 @@ module Data.Conduit.Shell.Types where
 import Control.Applicative
 import UnliftIO.Exception
 import Control.Monad
-import Control.Monad.Base
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Resource
