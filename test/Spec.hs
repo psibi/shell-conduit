@@ -12,6 +12,8 @@ import qualified Data.ByteString.Char8 as S8
 import Control.Applicative
 import Data.ByteString
 import Data.Char (toUpper)
+import Data.Either (isRight, isLeft)
+import Control.Exception (try)
 
 main :: IO ()
 main =
@@ -117,3 +119,19 @@ main =
           it "piping of commands - example 2" $
              do val <- run $ strings (echo "hello" $| tr "[a-z]" "[A-Z]")
                 val `shouldBe` ["HELLO"]
+     describe "Exception" $
+       do it "Basic exception handling - success" $
+            do (val :: Either ProcessException () ) <- try $ run (ls "/bin")
+               val `shouldSatisfy` isRight
+          it "Basic exception handling - failure" $
+            do (val :: Either ProcessException () ) <- try $ run (ls "/non_existent_directory")
+               val `shouldSatisfy` isLeft
+          it "Basic exception handling with <|> - success" $
+            do (val :: Either ProcessException () ) <- try $ run (ls "/non_existent_directory" <|> ls "/bin")
+               val `shouldSatisfy` isRight
+          it "Basic exception handling with <|> - failure" $
+            do (val :: Either ProcessException () ) <- try $ run (ls "/non_existent_directory" <|> ls "/non_existent_directory")
+               val `shouldSatisfy` isLeft
+          it "Basic exception handling with <|> - first success" $
+            do (val :: Either ProcessException () ) <- try $ run (ls "/bin" <|> ls "/non_existent_directory")
+               val `shouldSatisfy` isRight
