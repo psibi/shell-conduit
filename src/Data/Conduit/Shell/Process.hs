@@ -89,7 +89,9 @@ instance MonadIO Segment where
 
 -- | Process handles: @stdin@, @stdout@, @stderr@
 data Handles =
-  Handles Handle Handle Handle
+  Handles Handle
+          Handle
+          Handle
 
 -- | Process running exception.
 data ProcessException
@@ -103,19 +105,19 @@ instance Exception ProcessException
 instance Show ProcessException where
   show ProcessEmpty = "empty process"
   show (ProcessException cp ec) =
-    concat ["The "
-           ,case cmdspec cp of
-              ShellCommand s -> "shell command " ++ show s
-              RawCommand f args ->
-                "raw command: " ++
-                unwords (f : map show args)
-           ," returned a failure exit code: "
-           ,case ec of
-              ExitFailure i -> show i
-              _ -> show ec]
+    concat
+      [ "The "
+      , case cmdspec cp of
+          ShellCommand s -> "shell command " ++ show s
+          RawCommand f args -> "raw command: " ++ unwords (f : map show args)
+      , " returned a failure exit code: "
+      , case ec of
+          ExitFailure i -> show i
+          _ -> show ec
+      ]
 
 -- | Convert a process or a conduit to a segment.
-class ToSegment a where
+class ToSegment a  where
   type SegmentResult a
   toSegment :: a -> Segment (SegmentResult a)
 
@@ -123,17 +125,17 @@ instance ToSegment (Segment r) where
   type SegmentResult (Segment r) = r
   toSegment = id
 
-instance (a ~ ByteString,ToChunk b,m ~ IO) => ToSegment (ConduitM a b m r) where
-  type SegmentResult (ConduitM a b m r) = r
-  toSegment f =
-    SegmentConduit (f `fuseUpstream` CL.map toChunk)
+instance (a ~ ByteString, ToChunk b, m ~ IO) =>
+         ToSegment (ConduitT a b m r) where
+  type SegmentResult (ConduitT a b m r) = r
+  toSegment f = SegmentConduit (f `fuseUpstream` CL.map toChunk)
 
 instance ToSegment CreateProcess where
   type SegmentResult CreateProcess = ()
   toSegment = liftProcess
 
 -- | Used to allow outputting stdout or stderr.
-class ToChunk a where
+class ToChunk a  where
   toChunk :: a -> Either ByteString ByteString
 
 instance ToChunk ByteString where
@@ -152,30 +154,37 @@ proc name args = liftProcess (System.Process.proc name args)
 
 -- | Run a segment.
 run :: Segment r -> IO r
-run (SegmentConduit c) =
-  run (SegmentProcess (conduitToProcess c))
-run (SegmentProcess p) =
-  p (Handles stdin stdout stderr)
+run (SegmentConduit c) = run (SegmentProcess (conduitToProcess c))
+run (SegmentProcess p) = p (Handles stdin stdout stderr)
 
 -- | Fuse two segments (either processes or conduits).
 ($|) :: Segment () -> Segment b -> Segment b
 x $| y = x `fuseSegment` y
+
 infixl 0 $|
 
 -- | Work on the stream as 'Text' values from UTF-8.
-text :: (r ~ (),m ~ IO) => ConduitM Text Text m r -> Segment r
-text conduit' = bytes (decodeUtf8 $= conduit' $= encodeUtf8)
+text
+  :: (r ~ (), m ~ IO)
+  => ConduitT Text Text m r -> Segment r
+text conduit' = bytes (decodeUtf8 .| conduit' .| encodeUtf8)
 
 -- | Lift a conduit into a segment.
-bytes :: (a ~ ByteString,m ~ IO) => ConduitM a ByteString m r -> Segment r
+bytes
+  :: (a ~ ByteString, m ~ IO)
+  => ConduitT a ByteString m r -> Segment r
 bytes f = SegmentConduit (f `fuseUpstream` CL.map toChunk)
 
 -- | Lift a conduit into a segment.
-conduit :: (a ~ ByteString,m ~ IO) => ConduitM a ByteString m r -> Segment r
+conduit
+  :: (a ~ ByteString, m ~ IO)
+  => ConduitT a ByteString m r -> Segment r
 conduit f = SegmentConduit (f `fuseUpstream` CL.map toChunk)
 
 -- | Lift a conduit into a segment, which can yield stderr.
-conduitEither :: (a ~ ByteString,m ~ IO) => ConduitM a (Either ByteString ByteString) m r -> Segment r
+conduitEither
+  :: (a ~ ByteString, m ~ IO)
+  => ConduitT a (Either ByteString ByteString) m r -> Segment r
 conduitEither f = SegmentConduit (f `fuseUpstream` CL.map toChunk)
 
 -- | Lift a process into a segment.
@@ -183,98 +192,95 @@ liftProcess :: CreateProcess -> Segment ()
 liftProcess cp =
   SegmentProcess
     (\(Handles inh outh errh) ->
-       let config =
-             cp {std_in = UseHandle inh
-                ,std_out = UseHandle outh
-                ,std_err = UseHandle errh
-                ,close_fds = True}
-       in do (Nothing,Nothing,Nothing,ph) <- createProcess_ "liftProcess" config
-             ec <- waitForProcess ph
-             case ec of
-               ExitSuccess -> return ()
-               _ ->
-                 throwIO (ProcessException cp ec))
+        let config =
+              cp
+              { std_in = UseHandle inh
+              , std_out = UseHandle outh
+              , std_err = UseHandle errh
+              , close_fds = True
+              }
+        in do (Nothing, Nothing, Nothing, ph) <- createProcess_ "liftProcess" config
+              ec <- waitForProcess ph
+              case ec of
+                ExitSuccess -> return ()
+                _ -> throwIO (ProcessException cp ec))
 
 -- | Convert a conduit to a process.
-conduitToProcess :: ConduitM ByteString (Either ByteString ByteString) IO r
+conduitToProcess :: ConduitT ByteString (Either ByteString ByteString) IO r
                  -> (Handles -> IO r)
 conduitToProcess c (Handles inh outh errh) =
-  sourceHandle inh $$ c `fuseUpstream`
-  sinkHandles outh errh
+  runConduit $ sourceHandle inh .| c `fuseUpstream` sinkHandles outh errh
 
 -- | Sink everything into the two handles.
-sinkHandles :: Handle -> Handle -> Consumer (Either ByteString ByteString) IO ()
+sinkHandles :: Handle
+            -> Handle
+            -> ConduitT (Either ByteString ByteString) Void IO ()
 sinkHandles out err =
-  CL.mapM_ (\ebs ->
-              case ebs of
-                Left bs -> S.hPut out bs
-                Right bs -> S.hPut err bs)
+  CL.mapM_
+    (\ebs ->
+        case ebs of
+          Left bs -> S.hPut out bs
+          Right bs -> S.hPut err bs)
 
 -- | Create a pipe.
 createHandles :: IO (Handle, Handle)
 createHandles =
-  mask_ (do (inFD,outFD) <- createPipe
-            x <- fdToHandle inFD
-            y <- fdToHandle outFD
-            hSetBuffering x NoBuffering
-            hSetBuffering y NoBuffering
-            return (x,y))
+  mask_
+    (do (inFD, outFD) <- createPipe
+        x <- fdToHandle inFD
+        y <- fdToHandle outFD
+        hSetBuffering x NoBuffering
+        hSetBuffering y NoBuffering
+        return (x, y))
 
 -- | Fuse two processes.
 fuseProcess :: (Handles -> IO ()) -> (Handles -> IO r) -> (Handles -> IO r)
-fuseProcess left right (Handles in1 out2 err) =
-  do (in2,out1) <- createHandles
-     runConcurrently
-       (Concurrently
-          (left (Handles in1 out1 err) `finally`
-           hClose out1) *>
-        Concurrently
-          (right (Handles in2 out2 err) `finally`
-           hClose in2))
+fuseProcess left right (Handles in1 out2 err) = do
+  (in2, out1) <- createHandles
+  runConcurrently
+    (Concurrently (left (Handles in1 out1 err) `finally` hClose out1) *>
+     Concurrently (right (Handles in2 out2 err) `finally` hClose in2))
 
 -- | Fuse two conduits.
-fuseConduit :: Monad m
-            => ConduitM ByteString (Either ByteString ByteString) m ()
-            -> ConduitM ByteString (Either ByteString ByteString) m r
-            -> ConduitM ByteString (Either ByteString ByteString) m r
-fuseConduit left right = left =$= getZipConduit right'
-  where right' =
-          ZipConduit (CL.filter isRight) *>
-          ZipConduit
-            (CL.mapMaybe (either (const Nothing) Just) =$=
-             right)
-        isRight Right{} = True
-        isRight Left{} = False
+fuseConduit
+  :: Monad m
+  => ConduitT ByteString (Either ByteString ByteString) m ()
+  -> ConduitT ByteString (Either ByteString ByteString) m r
+  -> ConduitT ByteString (Either ByteString ByteString) m r
+fuseConduit left right = left .| getZipConduit right'
+  where
+    right' =
+      ZipConduit (CL.filter isRight) *>
+      ZipConduit (CL.mapMaybe (either (const Nothing) Just) .| right)
+    isRight Right {} = True
+    isRight Left {} = False
 
 -- | Fuse a conduit with a process.
-fuseConduitProcess :: ConduitM ByteString (Either ByteString ByteString) IO ()
-                   -> (Handles -> IO r)
-                   -> (Handles -> IO r)
-fuseConduitProcess left right (Handles in1 out2 err) =
-  do (in2,out1) <- createHandles
-     runConcurrently
-       (Concurrently
-          ((sourceHandle in1 $$ left =$
-            sinkHandles out1 err) `finally`
-           hClose out1) *>
-        Concurrently
-          (right (Handles in2 out2 err) `finally`
-           hClose in2))
+fuseConduitProcess
+  :: ConduitT ByteString (Either ByteString ByteString) IO ()
+  -> (Handles -> IO r)
+  -> (Handles -> IO r)
+fuseConduitProcess left right (Handles in1 out2 err) = do
+  (in2, out1) <- createHandles
+  runConcurrently
+    (Concurrently
+       ((runConduit $ sourceHandle in1 .| left .| sinkHandles out1 err) `finally`
+        hClose out1) *>
+     Concurrently (right (Handles in2 out2 err) `finally` hClose in2))
 
 -- | Fuse a process with a conduit.
-fuseProcessConduit :: (Handles -> IO ())
-                   -> ConduitM ByteString (Either ByteString ByteString) IO r
-                   -> (Handles -> IO r)
-fuseProcessConduit left right (Handles in1 out2 err) =
-  do (in2,out1) <- createHandles
-     runConcurrently
-       (Concurrently
-          (left (Handles in1 out1 err) `finally`
-           hClose out1) *>
-        Concurrently
-          ((sourceHandle in2 $$ right `fuseUpstream`
-            sinkHandles out2 err) `finally`
-           hClose in2))
+fuseProcessConduit
+  :: (Handles -> IO ())
+  -> ConduitT ByteString (Either ByteString ByteString) IO r
+  -> (Handles -> IO r)
+fuseProcessConduit left right (Handles in1 out2 err) = do
+  (in2, out1) <- createHandles
+  runConcurrently
+    (Concurrently (left (Handles in1 out1 err) `finally` hClose out1) *>
+     Concurrently
+       ((runConduit $
+         sourceHandle in2 .| right `fuseUpstream` sinkHandles out2 err) `finally`
+        hClose in2))
 
 -- | Fuse one segment with another.
 fuseSegment :: Segment () -> Segment r -> Segment r
