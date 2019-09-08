@@ -72,7 +72,7 @@ instance MonadIO m => Functor (Segment m) where
 instance MonadIO m => Applicative (Segment m) where
   (<*>) = ap; pure = return
 
-instance (Monad m, MonadUnliftIO m) => Alternative (Segment m) where
+instance MonadUnliftIO m => Alternative (Segment m) where
   this <|> that =
     do ex <- tryS this
        case ex of
@@ -81,7 +81,7 @@ instance (Monad m, MonadUnliftIO m) => Alternative (Segment m) where
   empty = throw ProcessEmpty
 
 -- | Try something in a segment.
-tryS :: (Exception e, MonadUnliftIO m, MonadIO m) => Segment m r -> Segment m (Either e r)
+tryS :: (Exception e, MonadUnliftIO m) => Segment m r -> Segment m (Either e r)
 tryS s =
   case s of
     SegmentConduit c -> SegmentConduit (tryC c)
