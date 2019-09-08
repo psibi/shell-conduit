@@ -41,6 +41,7 @@ library
                    , text
                    , transformers
                    , unix >= 2.7.0.1
+                   , exceptions
 
 test-suite test
  type:            exitcode-stdio-1.0
