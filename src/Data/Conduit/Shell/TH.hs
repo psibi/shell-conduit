@@ -57,9 +57,17 @@ getUniqueName candidate =
   do inScope <- recover (return False)
                         (do void (reify (mkName candidate))
                             return True)
-     if inScope || candidate == "import" || candidate == "type"
+     if inScope || candidate `elem` disallowedNames
         then getUniqueName (candidate ++ "'")
         else return (mkName candidate)
+  where
+    disallowedNames = [
+      "class",
+      "data",
+      "do",
+      "import",
+      "type"
+      ]
 
 -- | Get a list of all binaries in PATH.
 getAllBinaries :: IO [FilePath]
