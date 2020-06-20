@@ -32,12 +32,12 @@ import           Control.Concurrent.Async
 import           Control.Exception
 import           Control.Monad
 import           Control.Monad.IO.Class
-import           Control.Monad.Catch (MonadThrow)
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as S
 import           Data.Conduit
 import           Data.Conduit.Binary
 import qualified Data.Conduit.List as CL
+import           Conduit (MonadThrow)
 import           Data.Conduit.Text (encodeUtf8, decodeUtf8)
 import           Data.Text (Text)
 import           Data.Typeable

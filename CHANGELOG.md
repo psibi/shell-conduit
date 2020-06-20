@@ -1,3 +1,8 @@
+# 5.0.0
+
+* Generalize from IO to MonadUnliftIO m => m. See [PR 17](https://github.com/psibi/shell-conduit/pull/17)
+* More detter exclusion of disallowed names.
+
 # 4.7.0
 
 * Port it for newer conduit and resourcet
