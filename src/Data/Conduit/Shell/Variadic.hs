@@ -16,6 +16,7 @@ import qualified Data.Text.Encoding as ST
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Lazy.Encoding as LT
 import Control.Applicative (pure)
+import Control.Monad.IO.Class (MonadIO)
 
 -- | A variadic process maker.
 variadicProcess
@@ -24,15 +25,15 @@ variadicProcess
 variadicProcess name = spr name []
 
 -- | Make the final conduit.
-makeProcessLauncher :: String -> [ST.Text] -> Segment ()
+makeProcessLauncher :: MonadIO m => String -> [ST.Text] -> Segment m ()
 makeProcessLauncher name args = proc name (map ST.unpack args)
 
 -- | Process return type.
 class ProcessType t  where
   spr :: String -> [ST.Text] -> t
 
-instance (r ~ ()) =>
-         ProcessType (Segment r) where
+instance (r ~ (), MonadIO m) =>
+         ProcessType (Segment m r) where
   spr name args = makeProcessLauncher name args
 
 -- | Accept strings as arguments.

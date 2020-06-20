@@ -3,6 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 -- | Reading from the process.
 
@@ -31,6 +32,7 @@ import           Control.Concurrent.Async
 import           Control.Exception
 import           Control.Monad
 import           Control.Monad.IO.Class
+import           Control.Monad.Catch (MonadThrow)
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as S
 import           Data.Conduit
@@ -43,13 +45,14 @@ import           System.Exit
 import           System.IO
 import           System.Posix.IO (createPipe, fdToHandle)
 import           System.Process hiding (createPipe)
+import           UnliftIO (MonadUnliftIO, unliftIO, askUnliftIO)
 
 -- | A pipeable segment. Either a conduit or a process.
-data Segment r
-  = SegmentConduit (ConduitM ByteString (Either ByteString ByteString) IO r)
-  | SegmentProcess (Handles -> IO r)
+data Segment m r
+  = SegmentConduit (ConduitM ByteString (Either ByteString ByteString) m r)
+  | SegmentProcess (Handles -> m r)
 
-instance Monad Segment where
+instance MonadIO m => Monad (Segment m) where
   return = SegmentConduit . return
   SegmentConduit c >>= f =
     SegmentProcess (conduitToProcess c) >>=
@@ -63,13 +66,13 @@ instance Monad Segment where
                 conduitToProcess c handles
               SegmentProcess p -> p handles)
 
-instance Functor Segment where
+instance MonadIO m => Functor (Segment m) where
   fmap = liftM
 
-instance Applicative Segment where
+instance MonadIO m => Applicative (Segment m) where
   (<*>) = ap; pure = return
 
-instance Alternative Segment where
+instance MonadUnliftIO m => Alternative (Segment m) where
   this <|> that =
     do ex <- tryS this
        case ex of
@@ -78,14 +81,16 @@ instance Alternative Segment where
   empty = throw ProcessEmpty
 
 -- | Try something in a segment.
-tryS :: Exception e => Segment r -> Segment (Either e r)
+tryS :: (Exception e, MonadUnliftIO m) => Segment m r -> Segment m (Either e r)
 tryS s =
   case s of
     SegmentConduit c -> SegmentConduit (tryC c)
-    SegmentProcess f -> SegmentProcess (\h -> try (f h))
+    SegmentProcess f -> SegmentProcess $ (\h -> do
+                                             u <- askUnliftIO
+                                             liftIO $ try $ unliftIO u (f h))
 
-instance MonadIO Segment where
-  liftIO x = SegmentProcess (const x)
+instance MonadIO m => MonadIO (Segment m) where
+  liftIO x = SegmentProcess (const $ liftIO  x)
 
 -- | Process handles: @stdin@, @stdout@, @stderr@
 data Handles =
@@ -117,21 +122,21 @@ instance Show ProcessException where
       ]
 
 -- | Convert a process or a conduit to a segment.
-class ToSegment a  where
-  type SegmentResult a
-  toSegment :: a -> Segment (SegmentResult a)
+class ToSegment m a  where
+  type SegmentResult m a
+  toSegment :: a -> Segment m (SegmentResult m a)
 
-instance ToSegment (Segment r) where
-  type SegmentResult (Segment r) = r
+instance ToSegment m (Segment m r) where
+  type SegmentResult m (Segment m r) = r
   toSegment = id
 
-instance (a ~ ByteString, ToChunk b, m ~ IO) =>
-         ToSegment (ConduitT a b m r) where
-  type SegmentResult (ConduitT a b m r) = r
+instance (a ~ ByteString, ToChunk b, Monad m) =>
+         ToSegment m (ConduitT a b m r) where
+  type SegmentResult m (ConduitT a b m r) = r
   toSegment f = SegmentConduit (f `fuseUpstream` CL.map toChunk)
 
-instance ToSegment CreateProcess where
-  type SegmentResult CreateProcess = ()
+instance MonadIO m => ToSegment m CreateProcess where
+  type SegmentResult m CreateProcess = ()
   toSegment = liftProcess
 
 -- | Used to allow outputting stdout or stderr.
@@ -145,50 +150,50 @@ instance ToChunk (Either ByteString ByteString) where
   toChunk = id
 
 -- | Run a shell command.
-shell :: String -> Segment ()
+shell :: MonadIO m => String -> Segment m ()
 shell = liftProcess . System.Process.shell
 
 -- | Run a process command.
-proc :: String -> [String] -> Segment ()
+proc :: MonadIO m => String -> [String] -> Segment m ()
 proc name args = liftProcess (System.Process.proc name args)
 
 -- | Run a segment.
-run :: Segment r -> IO r
+run :: MonadIO m => Segment m r -> m r
 run (SegmentConduit c) = run (SegmentProcess (conduitToProcess c))
 run (SegmentProcess p) = p (Handles stdin stdout stderr)
 
 -- | Fuse two segments (either processes or conduits).
-($|) :: Segment () -> Segment b -> Segment b
+($|) :: MonadUnliftIO m => Segment m () -> Segment m b -> Segment m b
 x $| y = x `fuseSegment` y
 
 infixl 0 $|
 
 -- | Work on the stream as 'Text' values from UTF-8.
 text
-  :: (r ~ (), m ~ IO)
-  => ConduitT Text Text m r -> Segment r
+  :: (r ~ (), MonadThrow m)
+  => ConduitT Text Text m r -> Segment m r
 text conduit' = bytes (decodeUtf8 .| conduit' .| encodeUtf8)
 
 -- | Lift a conduit into a segment.
 bytes
-  :: (a ~ ByteString, m ~ IO)
-  => ConduitT a ByteString m r -> Segment r
+  :: (a ~ ByteString, Monad m)
+  => ConduitT a ByteString m r -> Segment m r
 bytes f = SegmentConduit (f `fuseUpstream` CL.map toChunk)
 
 -- | Lift a conduit into a segment.
 conduit
-  :: (a ~ ByteString, m ~ IO)
-  => ConduitT a ByteString m r -> Segment r
+  :: (a ~ ByteString, Monad m)
+  => ConduitT a ByteString m r -> Segment m r
 conduit f = SegmentConduit (f `fuseUpstream` CL.map toChunk)
 
 -- | Lift a conduit into a segment, which can yield stderr.
 conduitEither
-  :: (a ~ ByteString, m ~ IO)
-  => ConduitT a (Either ByteString ByteString) m r -> Segment r
+  :: (a ~ ByteString, Monad m)
+  => ConduitT a (Either ByteString ByteString) m r -> Segment m r
 conduitEither f = SegmentConduit (f `fuseUpstream` CL.map toChunk)
 
 -- | Lift a process into a segment.
-liftProcess :: CreateProcess -> Segment ()
+liftProcess :: MonadIO m => CreateProcess -> Segment m ()
 liftProcess cp =
   SegmentProcess
     (\(Handles inh outh errh) ->
@@ -199,26 +204,30 @@ liftProcess cp =
               , std_err = UseHandle errh
               , close_fds = True
               }
-        in do (Nothing, Nothing, Nothing, ph) <- createProcess_ "liftProcess" config
+        in
+          liftIO $ do
+              (Nothing, Nothing, Nothing, ph) <- createProcess_ "liftProcess" config
               ec <- waitForProcess ph
               case ec of
                 ExitSuccess -> return ()
                 _ -> throwIO (ProcessException cp ec))
 
 -- | Convert a conduit to a process.
-conduitToProcess :: ConduitT ByteString (Either ByteString ByteString) IO r
-                 -> (Handles -> IO r)
+conduitToProcess :: MonadIO m => ConduitT ByteString (Either ByteString ByteString) m r
+                 -> (Handles -> m r)
 conduitToProcess c (Handles inh outh errh) =
   runConduit $ sourceHandle inh .| c `fuseUpstream` sinkHandles outh errh
 
 -- | Sink everything into the two handles.
-sinkHandles :: Handle
+sinkHandles ::
+            MonadIO m
+            => Handle
             -> Handle
-            -> ConduitT (Either ByteString ByteString) Void IO ()
+            -> ConduitT (Either ByteString ByteString) Void m ()
 sinkHandles out err =
   CL.mapM_
     (\ebs ->
-        case ebs of
+        liftIO $ case ebs of
           Left bs -> S.hPut out bs
           Right bs -> S.hPut err bs)
 
@@ -234,12 +243,13 @@ createHandles =
         return (x, y))
 
 -- | Fuse two processes.
-fuseProcess :: (Handles -> IO ()) -> (Handles -> IO r) -> (Handles -> IO r)
+fuseProcess :: MonadUnliftIO m => (Handles -> m ()) -> (Handles -> m r) -> (Handles -> m r)
 fuseProcess left right (Handles in1 out2 err) = do
-  (in2, out1) <- createHandles
-  runConcurrently
-    (Concurrently (left (Handles in1 out1 err) `finally` hClose out1) *>
-     Concurrently (right (Handles in2 out2 err) `finally` hClose in2))
+  u <- askUnliftIO
+  (in2, out1) <- liftIO createHandles
+  liftIO $ runConcurrently
+    (Concurrently ((unliftIO u $ left (Handles in1 out1 err)) `finally` hClose out1) *>
+     Concurrently ((unliftIO u $ right (Handles in2 out2 err)) `finally` hClose in2))
 
 -- | Fuse two conduits.
 fuseConduit
@@ -257,33 +267,37 @@ fuseConduit left right = left .| getZipConduit right'
 
 -- | Fuse a conduit with a process.
 fuseConduitProcess
-  :: ConduitT ByteString (Either ByteString ByteString) IO ()
-  -> (Handles -> IO r)
-  -> (Handles -> IO r)
+  :: MonadUnliftIO m
+  => ConduitT ByteString (Either ByteString ByteString) m ()
+  -> (Handles -> m r)
+  -> (Handles -> m r)
 fuseConduitProcess left right (Handles in1 out2 err) = do
-  (in2, out1) <- createHandles
-  runConcurrently
+  u <- askUnliftIO
+  (in2, out1) <- liftIO createHandles
+  liftIO $ runConcurrently
     (Concurrently
-       ((runConduit $ sourceHandle in1 .| left .| sinkHandles out1 err) `finally`
+       ((unliftIO u $ runConduit $ sourceHandle in1 .| left .| sinkHandles out1 err) `finally`
         hClose out1) *>
-     Concurrently (right (Handles in2 out2 err) `finally` hClose in2))
+     Concurrently ((unliftIO u $ right (Handles in2 out2 err)) `finally` hClose in2))
 
 -- | Fuse a process with a conduit.
 fuseProcessConduit
-  :: (Handles -> IO ())
-  -> ConduitT ByteString (Either ByteString ByteString) IO r
-  -> (Handles -> IO r)
+  :: MonadUnliftIO m
+  => (Handles -> m ())
+  -> ConduitT ByteString (Either ByteString ByteString) m r
+  -> (Handles -> m r)
 fuseProcessConduit left right (Handles in1 out2 err) = do
-  (in2, out1) <- createHandles
-  runConcurrently
-    (Concurrently (left (Handles in1 out1 err) `finally` hClose out1) *>
+  u <- askUnliftIO
+  (in2, out1) <- liftIO createHandles
+  liftIO $ runConcurrently
+    (Concurrently ((unliftIO u $ left (Handles in1 out1 err)) `finally` hClose out1) *>
      Concurrently
-       ((runConduit $
+       ((unliftIO u $ runConduit $
          sourceHandle in2 .| right `fuseUpstream` sinkHandles out2 err) `finally`
         hClose in2))
 
 -- | Fuse one segment with another.
-fuseSegment :: Segment () -> Segment r -> Segment r
+fuseSegment :: MonadUnliftIO m => Segment m () -> Segment m r -> Segment m r
 SegmentConduit x `fuseSegment` SegmentConduit y =
   SegmentConduit (fuseConduit x y)
 SegmentConduit x `fuseSegment` SegmentProcess y =
